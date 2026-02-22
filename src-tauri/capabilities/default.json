@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "ZXP Magic default permissions",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "shell:default",
+    "shell:allow-open",
+    "fs:default",
+    "fs:read-all",
+    "fs:write-all",
+    "fs:allow-remove"
+  ]
+}
