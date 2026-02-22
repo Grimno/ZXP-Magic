@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { listen } from "@tauri-apps/api/event";
 import { AnimatePresence, motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { InstallView } from "./components/InstallView";
@@ -79,83 +80,100 @@ export default function App() {
     }
   };
 
-  // Drag & drop
+  // Drag & drop — Tauri native events
   useEffect(() => {
-    const onDragOver = (e: DragEvent) => { e.preventDefault(); setDragOver(true); };
-    const onDragLeave = (e: DragEvent) => { if (!e.relatedTarget) setDragOver(false); };
-    const onDrop = async (e: DragEvent) => {
-      e.preventDefault();
+    let unlistenHover: (() => void) | undefined;
+    let unlistenDrop: (() => void) | undefined;
+    let unlistenLeave: (() => void) | undefined;
+
+    listen("tauri://drag-over", () => {
+      setDragOver(true);
+    }).then(fn => { unlistenHover = fn; });
+
+    listen("tauri://drag-leave", () => {
       setDragOver(false);
-      const file = e.dataTransfer?.files?.[0];
-      if (!file) return;
-      if (file.name.endsWith(".zxp") || file.name.endsWith(".zxpinstall")) {
-        const path = (file as any).path;
-        if (path) await handleInstall(path);
+    }).then(fn => { unlistenLeave = fn; });
+
+    listen<{ paths: string[] }>("tauri://drag-drop", async (event) => {
+      setDragOver(false);
+      const paths = event.payload.paths;
+      if (!paths || paths.length === 0) return;
+      const path = paths[0];
+      if (path.endsWith(".zxp") || path.endsWith(".zxpinstall")) {
+        await handleInstall(path);
       } else {
-        showToast({ type: "error", message: ".zxp veya .zxpinstall dosyası bırakın." });
+        showToast({ type: "error", message: "Please drop a .zxp or .zxpinstall file." });
       }
-    };
-    window.addEventListener("dragover", onDragOver);
-    window.addEventListener("dragleave", onDragLeave);
-    window.addEventListener("drop", onDrop);
+    }).then(fn => { unlistenDrop = fn; });
+
     return () => {
-      window.removeEventListener("dragover", onDragOver);
-      window.removeEventListener("dragleave", onDragLeave);
-      window.removeEventListener("drop", onDrop);
+      unlistenHover?.();
+      unlistenLeave?.();
+      unlistenDrop?.();
     };
   }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[#080a0f] text-white overflow-hidden select-none">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3.5 border-b border-white/[0.05]">
+
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+        {/* Logo + name */}
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/40">
-            <span className="text-white font-black text-sm leading-none">Z</span>
+          <img src="/logo.png" alt="ZXP Magic" className="w-7 h-7 rounded-xl object-cover" />
+          <div className="leading-tight">
+            <p className="text-[13px] font-bold text-white tracking-tight">ZXP Magic</p>
+            <p className="text-[10px] text-white/30 leading-none">by Grimno</p>
           </div>
-          <span className="text-sm font-bold text-white/90 tracking-tight">ZXP Magic</span>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-0.5 bg-white/[0.04] border border-white/[0.06] rounded-xl p-1">
-          {(["install", "library"] as Tab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`relative px-5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                tab === t ? "text-white" : "text-white/35 hover:text-white/60"
-              }`}
-            >
-              {tab === t && (
-                <motion.span
-                  layoutId="tab-bg"
-                  className="absolute inset-0 bg-white/10 rounded-lg"
-                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                />
-              )}
-              <span className="relative">
-                {t === "install" ? "Kur" : "Kitaplık"}
-                {t === "library" && extensions.length > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold bg-blue-600/30 text-blue-400 rounded-md">
-                    {extensions.length}
-                  </span>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
-
+        {/* Settings */}
         <button
-          onClick={() => setShowSettings(s => !s)}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-            showSettings ? "bg-white/10 text-white" : "text-white/30 hover:text-white/60 hover:bg-white/5"
+          onClick={() => { setShowSettings(s => !s); }}
+          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+            showSettings
+              ? "bg-white/10 text-white/80"
+              : "text-white/25 hover:text-white/60 hover:bg-white/[0.06]"
           }`}
         >
           <Settings size={15} />
         </button>
       </header>
 
-      {/* Main */}
+      {/* ── Tab bar ── */}
+      {!showSettings && (
+        <div className="flex border-b border-white/[0.06] px-5">
+          {(["install", "library"] as Tab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`relative py-2.5 mr-6 text-[13px] font-semibold transition-colors duration-150 ${
+                tab === t ? "text-white" : "text-white/30 hover:text-white/55"
+              }`}
+            >
+              {t === "install" ? "Kur" : (
+                <span className="flex items-center gap-2">
+                  Kitaplık
+                  {extensions.length > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-white/8 text-white/40 rounded-md">
+                      {extensions.length}
+                    </span>
+                  )}
+                </span>
+              )}
+              {tab === t && (
+                <motion.div
+                  layoutId="tab-underline"
+                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-500 rounded-full"
+                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Main content ── */}
       <main className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           {showSettings ? (
@@ -168,7 +186,7 @@ export default function App() {
           ) : tab === "install" ? (
             <motion.div key="install"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }} className="h-full"
+              transition={{ duration: 0.12 }} className="h-full"
             >
               <InstallView
                 installing={installing}
@@ -182,7 +200,7 @@ export default function App() {
           ) : (
             <motion.div key="library"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }} className="h-full"
+              transition={{ duration: 0.12 }} className="h-full"
             >
               <LibraryView
                 extensions={extensions}
@@ -196,7 +214,6 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Extension detail panel */}
       <AnimatePresence>
         {selectedExt && (
           <ExtensionDetail
@@ -207,7 +224,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Toast */}
       <AnimatePresence>
         {toast && <InstallToast toast={toast} />}
       </AnimatePresence>
@@ -219,12 +235,12 @@ export default function App() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
           >
-            <div className="absolute inset-0 bg-blue-950/60 backdrop-blur-md" />
+            <div className="absolute inset-0 bg-blue-950/70 backdrop-blur-md" />
             <div className="relative flex flex-col items-center gap-4">
               <motion.div
-                animate={{ scale: [1, 1.08, 1] }}
+                animate={{ scale: [1, 1.06, 1] }}
                 transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
-                className="w-24 h-24 rounded-3xl bg-blue-600/20 border-2 border-blue-500/60 flex items-center justify-center"
+                className="w-24 h-24 rounded-3xl bg-blue-600/20 border-2 border-blue-500/50 flex items-center justify-center"
               >
                 <span className="text-5xl">📦</span>
               </motion.div>

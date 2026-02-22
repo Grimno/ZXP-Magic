@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { Puzzle, Trash2, RefreshCw, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Puzzle, Trash2, RefreshCw, Package } from "lucide-react";
 import { useState } from "react";
 import type { ExtensionInfo } from "../types";
 
@@ -16,7 +16,7 @@ const APP_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
 };
 
 function getAppColor(name: string) {
-  return APP_COLORS[name] || { bg: "bg-white/8", text: "text-white/50", dot: "bg-white/30" };
+  return APP_COLORS[name] || { bg: "bg-white/8", text: "text-white/40", dot: "bg-white/25" };
 }
 
 interface LibraryViewProps {
@@ -27,19 +27,17 @@ interface LibraryViewProps {
   onRefresh: () => Promise<void>;
 }
 
-function SkeletonCard() {
+function SkeletonRow() {
   return (
-    <div className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-5 animate-pulse">
-      <div className="flex items-start gap-4">
-        <div className="w-11 h-11 rounded-xl bg-white/5 shrink-0" />
-        <div className="flex-1 space-y-2.5">
-          <div className="h-3.5 bg-white/5 rounded-lg w-1/2" />
-          <div className="h-2.5 bg-white/5 rounded-lg w-1/4" />
-          <div className="flex gap-2 mt-3">
-            <div className="h-6 w-24 bg-white/5 rounded-lg" />
-            <div className="h-6 w-20 bg-white/5 rounded-lg" />
-          </div>
-        </div>
+    <div className="flex items-center gap-4 px-6 py-4 border-b border-white/[0.04] animate-pulse">
+      <div className="w-10 h-10 rounded-xl bg-white/5 shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3.5 bg-white/5 rounded-lg w-1/3" />
+        <div className="h-2.5 bg-white/5 rounded-lg w-1/5" />
+      </div>
+      <div className="flex gap-1.5">
+        <div className="h-6 w-20 bg-white/5 rounded-lg" />
+        <div className="h-6 w-16 bg-white/5 rounded-lg" />
       </div>
     </div>
   );
@@ -47,19 +45,18 @@ function SkeletonCard() {
 
 export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefresh }: LibraryViewProps) {
   const [refreshing, setRefreshing] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await onRefresh();
-    setTimeout(() => setRefreshing(false), 600);
+    setTimeout(() => setRefreshing(false), 700);
   };
 
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto px-6 py-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
-        </div>
+      <div className="h-full overflow-y-auto">
+        {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
       </div>
     );
   }
@@ -68,10 +65,10 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 pb-10">
         <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-          <Puzzle size={26} className="text-white/15" />
+          <Package size={26} className="text-white/15" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-semibold text-white/40">Kitaplık boş</p>
+          <p className="text-sm font-semibold text-white/35">Kitaplık boş / Library empty</p>
           <p className="text-xs text-white/20 mt-1">Kur sekmesinden extension ekle</p>
         </div>
       </div>
@@ -79,35 +76,41 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Toolbar */}
-      <div className="sticky top-0 z-10 bg-[#080a0f]/90 backdrop-blur-md px-6 py-3.5 border-b border-white/[0.04] flex items-center justify-between">
-        <p className="text-xs text-white/30 font-medium">
-          <span className="text-white/60 font-bold">{extensions.length}</span> extension yüklü
+      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.04]">
+        <p className="text-xs text-white/25">
+          <span className="text-white/50 font-semibold">{extensions.length}</span>
+          <span className="ml-1">extension yüklü</span>
         </p>
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/[0.04]"
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-xs text-white/25 hover:text-white/50 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/[0.04] disabled:opacity-40"
         >
-          <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+          <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
           Yenile
         </button>
       </div>
 
-      {/* Grid */}
-      <div className="px-6 py-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {extensions.map((ext, i) => (
-          <motion.div
-            key={ext.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 30 }}
-            onClick={() => onSelect(ext)}
-            className="group relative bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-white/[0.1] rounded-xl p-5 cursor-pointer transition-all duration-200"
-          >
-            <div className="flex items-start gap-4">
+      {/* List */}
+      <div className="flex-1 overflow-y-auto">
+        <AnimatePresence>
+          {extensions.map((ext, i) => (
+            <motion.div
+              key={ext.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, type: "spring", stiffness: 300, damping: 30 }}
+              onMouseEnter={() => setHoveredId(ext.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onClick={() => onSelect(ext)}
+              className={`flex items-center gap-4 px-6 py-4 border-b border-white/[0.04] cursor-pointer transition-colors duration-150 ${
+                hoveredId === ext.id ? "bg-white/[0.04]" : ""
+              }`}
+            >
               {/* Icon */}
-              <div className="w-11 h-11 rounded-xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 overflow-hidden">
                 {ext.icon_path ? (
                   <img
                     src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
@@ -116,51 +119,55 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
                     onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
                 ) : (
-                  <Puzzle size={18} className="text-white/20" />
+                  <Puzzle size={16} className="text-white/20" />
                 )}
               </div>
 
-              {/* Info */}
+              {/* Name + meta */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-0.5">
-                  <p className="text-sm font-semibold text-white/90 truncate">{ext.name}</p>
-                  <ChevronRight size={14} className="text-white/15 group-hover:text-white/40 shrink-0 transition-colors" />
-                </div>
-                <p className="text-[11px] text-white/25 mb-3">v{ext.version}{ext.author ? ` · ${ext.author}` : ""}</p>
+                <p className="text-sm font-semibold text-white/90 truncate">{ext.name}</p>
+                <p className="text-[11px] text-white/25 mt-0.5">
+                  v{ext.version}{ext.author ? ` · ${ext.author}` : ""}
+                </p>
+              </div>
 
-                {ext.host_list.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {ext.host_list.slice(0, 3).map(h => {
-                      const c = getAppColor(h.name);
-                      return (
-                        <span key={h.name} className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg font-medium ${c.bg} ${c.text}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${c.dot} shrink-0`} />
-                          {h.name}
-                        </span>
-                      );
-                    })}
-                    {ext.host_list.length > 3 && (
-                      <span className="text-[11px] px-2 py-1 rounded-lg bg-white/5 text-white/25">
-                        +{ext.host_list.length - 3}
-                      </span>
-                    )}
-                  </div>
+              {/* Host tags */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {ext.host_list.slice(0, 2).map(h => {
+                  const c = getAppColor(h.name);
+                  return (
+                    <span key={h.name} className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg font-medium ${c.bg} ${c.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${c.dot} shrink-0`} />
+                      {h.name}
+                    </span>
+                  );
+                })}
+                {ext.host_list.length > 2 && (
+                  <span className="text-[11px] px-2 py-1 rounded-lg bg-white/5 text-white/25">
+                    +{ext.host_list.length - 2}
+                  </span>
                 )}
               </div>
-            </div>
 
-            {/* Uninstall — hover'da belirir */}
-            <motion.button
-              initial={{ opacity: 0 }}
-              whileHover={{ opacity: 1 }}
-              onClick={e => { e.stopPropagation(); onUninstall(ext); }}
-              className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 flex items-center gap-1.5 text-[11px] text-white/25 hover:text-red-400 bg-white/[0.03] hover:bg-red-500/10 border border-white/[0.05] hover:border-red-500/20 px-2.5 py-1.5 rounded-lg transition-all"
-            >
-              <Trash2 size={11} />
-              Kaldır
-            </motion.button>
-          </motion.div>
-        ))}
+              {/* Uninstall */}
+              <AnimatePresence>
+                {hoveredId === ext.id && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.1 }}
+                    onClick={e => { e.stopPropagation(); onUninstall(ext); }}
+                    className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-red-400 bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.06] hover:border-red-500/20 px-2.5 py-1.5 rounded-lg transition-all shrink-0"
+                  >
+                    <Trash2 size={11} />
+                    Kaldır
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
