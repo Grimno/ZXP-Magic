@@ -34,11 +34,12 @@ pub struct InstallResult {
 pub fn get_extensions_folder() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        let program_files = std::env::var("PROGRAMFILES(X86)")
-            .or_else(|_| std::env::var("PROGRAMFILES"))
-            .unwrap_or_else(|_| "C:\\Program Files (x86)".to_string());
-        PathBuf::from(program_files)
-            .join("Common Files")
+        // User-level CEP folder — no admin required, Adobe reads this location
+        let appdata = std::env::var("APPDATA")
+            .unwrap_or_else(|_| std::env::var("USERPROFILE")
+                .map(|p| format!("{}\\AppData\\Roaming", p))
+                .unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Roaming".to_string()));
+        PathBuf::from(appdata)
             .join("Adobe")
             .join("CEP")
             .join("extensions")
