@@ -45,7 +45,14 @@ pub fn get_extensions_folder() -> PathBuf {
     }
     #[cfg(target_os = "macos")]
     {
-        PathBuf::from("/Library/Application Support/Adobe/CEP/extensions")
+        // User-level CEP folder — no sudo required, Adobe reads both locations
+        let home = std::env::var("HOME").unwrap_or_else(|_| "~".to_string());
+        PathBuf::from(home)
+            .join("Library")
+            .join("Application Support")
+            .join("Adobe")
+            .join("CEP")
+            .join("extensions")
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
