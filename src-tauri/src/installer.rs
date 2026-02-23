@@ -30,11 +30,10 @@ pub struct InstallResult {
     pub extension: Option<ExtensionInfo>,
 }
 
-/// Returns the system CEP extensions folder path
+/// Returns the primary (user-level) CEP extensions folder — used as install target
 pub fn get_extensions_folder() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        // User-level CEP folder — no admin required, Adobe reads this location
         let appdata = std::env::var("APPDATA")
             .unwrap_or_else(|_| std::env::var("USERPROFILE")
                 .map(|p| format!("{}\\AppData\\Roaming", p))
@@ -46,7 +45,6 @@ pub fn get_extensions_folder() -> PathBuf {
     }
     #[cfg(target_os = "macos")]
     {
-        // User-level CEP folder — no sudo required, Adobe reads both locations
         let home = std::env::var("HOME").unwrap_or_else(|_| "~".to_string());
         PathBuf::from(home)
             .join("Library")
@@ -59,6 +57,35 @@ pub fn get_extensions_folder() -> PathBuf {
     {
         PathBuf::from("/tmp/cep_extensions")
     }
+}
+
+/// Returns all CEP extension folders to scan (user-level + system-level)
+fn get_all_extension_folders() -> Vec<PathBuf> {
+    let mut folders = vec![get_extensions_folder()];
+
+    #[cfg(target_os = "windows")]
+    {
+        // System-level: C:\Program Files (x86)\Common Files\Adobe\CEP\extensions
+        let sys_x86 = PathBuf::from("C:\\Program Files (x86)\\Common Files\\Adobe\\CEP\\extensions");
+        if sys_x86.exists() {
+            folders.push(sys_x86);
+        }
+        // System-level: C:\Program Files\Common Files\Adobe\CEP\extensions
+        let sys = PathBuf::from("C:\\Program Files\\Common Files\\Adobe\\CEP\\extensions");
+        if sys.exists() && !folders.contains(&sys) {
+            folders.push(sys);
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // System-level: /Library/Application Support/Adobe/CEP/extensions
+        let sys = PathBuf::from("/Library/Application Support/Adobe/CEP/extensions");
+        if sys.exists() {
+            folders.push(sys);
+        }
+    }
+
+    folders
 }
 
 /// Parse manifest.xml from a ZXP (zip) file
@@ -88,39 +115,47 @@ pub fn get_extension_info_from_zxp(path: &str) -> Result<ExtensionInfo, String> 
     parse_manifest_xml(&manifest_xml, None)
 }
 
-/// Scan the extensions folder and return all installed extensions
+/// Scan all CEP extension folders and return all installed extensions
 pub fn list_extensions() -> Vec<ExtensionInfo> {
-    let extensions_dir = get_extensions_folder();
-    let mut result = Vec::new();
+    let mut result: Vec<ExtensionInfo> = Vec::new();
+    let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-    if !extensions_dir.exists() {
-        return result;
-    }
+    for extensions_dir in get_all_extension_folders() {
+        if !extensions_dir.exists() {
+            continue;
+        }
 
-    if let Ok(entries) = fs::read_dir(&extensions_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if !path.is_dir() {
-                continue;
-            }
+        if let Ok(entries) = fs::read_dir(&extensions_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
 
-            let manifest_path = path.join("CSXS").join("manifest.xml");
-            if !manifest_path.exists() {
-                continue;
-            }
+                let manifest_path = path.join("CSXS").join("manifest.xml");
+                if !manifest_path.exists() {
+                    continue;
+                }
 
-            if let Ok(content) = fs::read_to_string(&manifest_path) {
-                if let Ok(mut info) = parse_manifest_xml(&content, Some(&path)) {
-                    // Look for extension icon
-                    for icon_name in &["icon.png", "Icon.png", "icon.svg", "logo.png"] {
-                        let icon = path.join(icon_name);
-                        if icon.exists() {
-                            info.icon_path = Some(icon.to_string_lossy().to_string());
-                            break;
+                if let Ok(content) = fs::read_to_string(&manifest_path) {
+                    if let Ok(mut info) = parse_manifest_xml(&content, Some(&path)) {
+                        // Skip duplicates (same extension in multiple folders)
+                        if seen_ids.contains(&info.id) {
+                            continue;
                         }
+                        seen_ids.insert(info.id.clone());
+
+                        // Look for extension icon
+                        for icon_name in &["icon.png", "Icon.png", "icon.svg", "logo.png"] {
+                            let icon = path.join(icon_name);
+                            if icon.exists() {
+                                info.icon_path = Some(icon.to_string_lossy().to_string());
+                                break;
+                            }
+                        }
+                        info.install_path = Some(path.to_string_lossy().to_string());
+                        result.push(info);
                     }
-                    info.install_path = Some(path.to_string_lossy().to_string());
-                    result.push(info);
                 }
             }
         }
@@ -225,16 +260,16 @@ pub fn install_extension(path: &str) -> InstallResult {
     }
 }
 
-/// Remove an installed extension by its ID
+/// Remove an installed extension by its ID (searches all known CEP folders)
 pub fn uninstall_extension(extension_id: &str) -> Result<(), String> {
-    let extensions_dir = get_extensions_folder();
-    let target = extensions_dir.join(extension_id);
-
-    if !target.exists() {
-        return Err(format!("Extension '{}' is not installed", extension_id));
+    for folder in get_all_extension_folders() {
+        let target = folder.join(extension_id);
+        if target.exists() {
+            return fs::remove_dir_all(&target)
+                .map_err(|e| format!("Cannot remove extension: {}", e));
+        }
     }
-
-    fs::remove_dir_all(&target).map_err(|e| format!("Cannot remove extension: {}", e))
+    Err(format!("Extension '{}' not found", extension_id))
 }
 
 /// Read CEP PlayerDebugMode registry/plist setting
