@@ -20,6 +20,11 @@ const APP_ACCENT_HEX: Record<string, string> = {
   "Animate":            "#f59e0b",
   "Premiere Rush":      "#a855f7",
   "Character Animator": "#14b8a6",
+  "Lightroom":          "#0ea5e9",
+  "Lightroom Classic":  "#f59e0b",
+  "Adobe XD":           "#d946ef",
+  "Media Encoder":      "#22c55e",
+  "Dreamweaver":        "#06b6d4",
 };
 
 function getPrimaryAccent(hostList: { name: string }[]): string {
