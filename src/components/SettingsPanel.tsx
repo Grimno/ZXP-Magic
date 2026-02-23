@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Bug, FolderOpen, Shield, ChevronRight } from "lucide-react";
+import { FolderOpen, Bug, Shield } from "lucide-react";
 
 export function SettingsPanel() {
   const [debugMode, setDebugMode] = useState(false);
@@ -27,90 +27,183 @@ export function SettingsPanel() {
   };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-5 space-y-3">
-      <div className="mb-4">
-        <h2 className="text-sm font-bold text-white/90">Settings</h2>
-        <p className="text-xs text-white/30 mt-0.5">ZXP Magic tercihleri</p>
-      </div>
+    <div className="h-full overflow-y-auto">
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: "36px 24px 40px" }}>
 
-      {/* Extensions Folder */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-white/[0.06]">
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Extensions Klasörü</p>
-        </div>
-        <div className="px-4 py-3">
-          <p className="text-[11px] text-white/40 font-mono break-all leading-relaxed">
-            {extensionsFolder || "Yükleniyor…"}
+        {/* Title */}
+        <div style={{ marginBottom: 28 }}>
+          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em" }}>
+            Settings
           </p>
-          <button
-            onClick={openFolder}
-            className="mt-3 flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-          >
-            <FolderOpen size={12} />
-            Explorer'da Aç
-            <ChevronRight size={11} />
-          </button>
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+            ZXP Magic preferences
+          </p>
         </div>
-      </div>
 
-      {/* Debug Mode */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-white/[0.06]">
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Geliştirici</p>
-        </div>
-        <div className="px-4 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                <Bug size={14} className="text-amber-400" />
+        {/* ── Storage section ── */}
+        <Section label="Storage">
+          {/* Extensions folder */}
+          <div style={{ padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <FolderOpen size={14} style={{ color: "var(--text-3)", flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                    Extensions Folder
+                  </p>
+                  <p style={{
+                    fontSize: 11,
+                    color: "var(--text-3)",
+                    marginTop: 2,
+                    fontFamily: "monospace",
+                    wordBreak: "break-all",
+                    lineHeight: 1.5,
+                  }}>
+                    {extensionsFolder || "Loading…"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-white/80">CEP Debug Mode</p>
-                <p className="text-[11px] text-white/30 mt-0.5 leading-relaxed max-w-[260px]">
-                  İmzasız extension'ların Adobe uygulamalarında çalışmasını sağlar.
+              <button
+                onClick={openFolder}
+                style={{
+                  flexShrink: 0,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "var(--accent)",
+                  background: "var(--accent-dim)",
+                  border: "1px solid rgba(79,141,247,0.2)",
+                  borderRadius: 8,
+                  padding: "5px 12px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Open
+              </button>
+            </div>
+          </div>
+        </Section>
+
+        {/* ── Developer section ── */}
+        <Section label="Developer">
+          <div style={{ padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <Bug size={14} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                    CEP Debug Mode
+                  </p>
+                  <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, lineHeight: 1.5 }}>
+                    Allow unsigned extensions in Adobe apps
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle */}
+              <button
+                onClick={toggleDebugMode}
+                disabled={debugLoading}
+                style={{
+                  flexShrink: 0,
+                  position: "relative",
+                  width: 40,
+                  height: 22,
+                  borderRadius: 99,
+                  background: debugMode ? "var(--accent)" : "var(--elevated)",
+                  border: `1px solid ${debugMode ? "rgba(79,141,247,0.4)" : "var(--border)"}`,
+                  cursor: debugLoading ? "not-allowed" : "pointer",
+                  opacity: debugLoading ? 0.4 : 1,
+                  transition: "background 0.2s, border-color 0.2s",
+                  boxShadow: debugMode ? "0 0 10px rgba(79,141,247,0.25)" : "none",
+                }}
+              >
+                <span style={{
+                  position: "absolute",
+                  top: 2,
+                  left: 2,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "#fff",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                  transform: debugMode ? "translateX(18px)" : "translateX(0)",
+                  transition: "transform 0.2s",
+                }} />
+              </button>
+            </div>
+
+            {/* Warning banner */}
+            {debugMode && (
+              <div style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                marginTop: 12,
+                padding: "10px 12px",
+                background: "rgba(245,158,11,0.06)",
+                border: "1px solid rgba(245,158,11,0.14)",
+                borderRadius: 10,
+              }}>
+                <Shield size={11} style={{ color: "#fbbf24", flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 11, color: "rgba(251,191,36,0.75)", lineHeight: 1.5 }}>
+                  Debug mode is active. Disable when development is complete.
                 </p>
               </div>
-            </div>
-            <button
-              onClick={toggleDebugMode}
-              disabled={debugLoading}
-              className={`relative shrink-0 w-10 h-[22px] rounded-full transition-colors duration-200 ${
-                debugMode ? "bg-blue-600" : "bg-white/10"
-              } ${debugLoading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform duration-200 ${
-                debugMode ? "translate-x-[18px]" : "translate-x-0"
-              }`} />
-            </button>
+            )}
           </div>
-          {debugMode && (
-            <div className="mt-3 flex items-start gap-2 px-3 py-2.5 bg-amber-500/5 rounded-lg border border-amber-500/10">
-              <Shield size={11} className="text-amber-500/70 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-amber-400/70 leading-relaxed">
-                Debug modu aktif. Geliştirme bitmişse kapatmanız önerilir.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+        </Section>
 
-      {/* About */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-white/[0.06]">
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Hakkında</p>
-        </div>
-        <div className="px-4 py-3 space-y-2">
+        {/* ── About section ── */}
+        <Section label="About">
           {[
-            ["Versiyon", "0.1.0"],
-            ["Platform", "Windows / macOS"],
-            ["Lisans", "MIT"],
-          ].map(([label, value]) => (
-            <div key={label} className="flex justify-between text-xs">
-              <span className="text-white/30">{label}</span>
-              <span className="text-white/60 font-medium">{value}</span>
+            ["Version", "0.1.0"],
+            ["Platform", "Windows · macOS"],
+            ["License", "MIT"],
+            ["Made by", "Grimno"],
+          ].map(([label, value], i, arr) => (
+            <div
+              key={label}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: i < arr.length - 1 ? "1px solid var(--border-sub)" : "none",
+              }}
+            >
+              <span style={{ fontSize: 13, color: "var(--text-2)" }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{value}</span>
             </div>
           ))}
-        </div>
+        </Section>
+
+      </div>
+    </div>
+  );
+}
+
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: "var(--text-3)",
+        textTransform: "uppercase",
+        letterSpacing: "0.07em",
+        marginBottom: 8,
+        paddingLeft: 4,
+      }}>
+        {label}
+      </p>
+      <div style={{
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 14,
+        overflow: "hidden",
+      }}>
+        {children}
       </div>
     </div>
   );

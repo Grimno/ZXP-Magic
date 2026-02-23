@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { X, Puzzle, Trash2, FolderOpen, Tag, User, Cpu } from "lucide-react";
+import { X, Trash2, FolderOpen } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ExtensionInfo } from "../types";
+import { AppBadge, ExtIconFallback } from "../lib/appColors";
 
 interface ExtensionDetailProps {
   ext: ExtensionInfo;
@@ -9,18 +10,23 @@ interface ExtensionDetailProps {
   onUninstall: (ext: ExtensionInfo) => void;
 }
 
-const APP_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  "Premiere Pro": { bg: "bg-violet-500/10", text: "text-violet-400", dot: "bg-violet-500" },
-  "After Effects": { bg: "bg-blue-500/10", text: "text-blue-400", dot: "bg-blue-500" },
-  "Photoshop": { bg: "bg-sky-500/10", text: "text-sky-400", dot: "bg-sky-500" },
-  "Illustrator": { bg: "bg-orange-500/10", text: "text-orange-400", dot: "bg-orange-500" },
-  "InDesign": { bg: "bg-pink-500/10", text: "text-pink-400", dot: "bg-pink-500" },
-  "Audition": { bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-500" },
-  "Animate": { bg: "bg-yellow-500/10", text: "text-yellow-400", dot: "bg-yellow-500" },
+const APP_ACCENT_HEX: Record<string, string> = {
+  "Premiere Pro":       "#8b5cf6",
+  "After Effects":      "#3b82f6",
+  "Photoshop":          "#0ea5e9",
+  "Illustrator":        "#f97316",
+  "InDesign":           "#ec4899",
+  "Audition":           "#10b981",
+  "Animate":            "#f59e0b",
+  "Premiere Rush":      "#a855f7",
+  "Character Animator": "#14b8a6",
 };
 
-function getAppColor(name: string) {
-  return APP_COLORS[name] || { bg: "bg-white/5", text: "text-white/50", dot: "bg-white/30" };
+function getPrimaryAccent(hostList: { name: string }[]): string {
+  for (const h of hostList) {
+    if (APP_ACCENT_HEX[h.name]) return APP_ACCENT_HEX[h.name];
+  }
+  return "#4f8df7";
 }
 
 export function ExtensionDetail({ ext, onClose, onUninstall }: ExtensionDetailProps) {
@@ -28,125 +34,259 @@ export function ExtensionDetail({ ext, onClose, onUninstall }: ExtensionDetailPr
     try { await invoke("open_extensions_folder"); } catch (e) { console.error(e); }
   };
 
+  const accent = getPrimaryAccent(ext.host_list);
+
+  const rows = [
+    ext.description ? ["Description", ext.description] : null,
+    ["Extension ID", ext.id],
+    ext.cep_version ? ["CEP Version", ext.cep_version] : null,
+    ext.author ? ["Developer", ext.author] : null,
+  ].filter(Boolean) as [string, string][];
+
   return (
     <>
+      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        transition={{ duration: 0.18 }}
+        style={{
+          position: "fixed", inset: 0, zIndex: 40,
+          background: "rgba(7,8,15,0.6)",
+          backdropFilter: "blur(10px)",
+        }}
         onClick={onClose}
       />
+
+      {/* Panel */}
       <motion.div
-        initial={{ opacity: 0, x: "100%" }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: "100%" }}
-        transition={{ type: "spring", stiffness: 350, damping: 35 }}
-        className="fixed right-0 top-0 bottom-0 z-50 w-72 bg-[#13151c] border-l border-white/[0.06] shadow-2xl flex flex-col"
+        initial={{ x: "100%" }}
+        animate={{ x: 0 }}
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", stiffness: 340, damping: 34 }}
+        style={{
+          position: "fixed",
+          right: 0, top: 0, bottom: 0,
+          width: 310,
+          zIndex: 50,
+          background: "var(--surface)",
+          borderLeft: "1px solid var(--border)",
+          boxShadow: "-24px 0 60px rgba(0,0,0,0.55)",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
-          <p className="text-sm font-semibold text-white/80">Detaylar</p>
+        {/* ── Header ── */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          height: 52,
+          borderBottom: "1px solid var(--border-sub)",
+          flexShrink: 0,
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
+            Extension Details
+          </p>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors"
+            style={{
+              width: 28, height: 28,
+              borderRadius: 8,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--text-3)",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = "var(--elevated)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = "transparent";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-3)";
+            }}
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Hero */}
-          <div className="flex flex-col items-center text-center px-4 py-6 border-b border-white/[0.04]">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center mb-3 overflow-hidden">
-              {ext.icon_path ? (
-                <img
-                  src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
-                  alt=""
-                  className="w-full h-full object-contain p-2"
-                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              ) : (
-                <Puzzle size={24} className="text-white/20" />
-              )}
-            </div>
-            <p className="text-base font-bold text-white/90">{ext.name}</p>
-            <p className="text-xs text-white/30 mt-0.5">v{ext.version}</p>
-          </div>
+        {/* ── Hero ── */}
+        <div style={{
+          padding: "28px 20px 24px",
+          borderBottom: "1px solid var(--border-sub)",
+          flexShrink: 0,
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Subtle glow */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: `radial-gradient(ellipse 80% 55% at 50% 0%, ${accent}14 0%, transparent 65%)`,
+          }} />
+          {/* Top accent line */}
+          <div style={{
+            position: "absolute", top: 0, left: "20%", right: "20%", height: 1,
+            background: `linear-gradient(90deg, transparent, ${accent}60, transparent)`,
+          }} />
 
-          {/* Meta */}
-          <div className="px-4 py-4 space-y-4">
-            {ext.description && (
-              <div>
-                <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold mb-1.5">Açıklama</p>
-                <p className="text-xs text-white/50 leading-relaxed">{ext.description}</p>
-              </div>
-            )}
-
-            {ext.author && (
-              <div className="flex items-center gap-2.5">
-                <User size={12} className="text-white/25 shrink-0" />
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">Geliştirici</p>
-                  <p className="text-xs text-white/60 mt-0.5">{ext.author}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-start gap-2.5">
-              <Tag size={12} className="text-white/25 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">Extension ID</p>
-                <p className="text-[11px] text-white/40 font-mono break-all mt-0.5">{ext.id}</p>
-              </div>
-            </div>
-
-            {ext.cep_version && (
-              <div className="flex items-center gap-2.5">
-                <Cpu size={12} className="text-white/25 shrink-0" />
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold">CEP Versiyonu</p>
-                  <p className="text-xs text-white/60 mt-0.5">{ext.cep_version}</p>
-                </div>
-              </div>
-            )}
-
-            {ext.host_list.length > 0 && (
-              <div>
-                <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold mb-2">Uyumlu Uygulamalar</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ext.host_list.map(h => {
-                    const c = getAppColor(h.name);
-                    return (
-                      <span key={h.name} className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg font-medium ${c.bg} ${c.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${c.dot} opacity-70`} />
-                        {h.name}
-                        {h.version !== "All" && <span className="opacity-50 ml-0.5">{h.version}</span>}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
+          {/* Icon */}
+          <div style={{
+            width: 68, height: 68,
+            borderRadius: 18,
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            boxShadow: `0 0 0 4px ${accent}12, 0 8px 24px rgba(0,0,0,0.35)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            overflow: "hidden",
+            margin: "0 auto 14px",
+            position: "relative",
+          }}>
+            {ext.icon_path ? (
+              <img
+                src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "contain", padding: 10 }}
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : (
+              <ExtIconFallback name={ext.name} id={ext.id} size={60} />
             )}
           </div>
+
+          {/* Name */}
+          <p style={{
+            fontSize: 16, fontWeight: 700,
+            color: "var(--text)",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
+          }}>
+            {ext.name}
+          </p>
+
+          {/* Version + author */}
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 5 }}>
+            v{ext.version}{ext.author ? ` · ${ext.author}` : ""}
+          </p>
+
+          {/* App tags */}
+          {ext.host_list.length > 0 && (
+            <div style={{
+              display: "flex", flexWrap: "wrap",
+              justifyContent: "center", gap: 6, marginTop: 12,
+            }}>
+              {ext.host_list.map(h => (
+                <AppBadge key={h.name} name={h.name} size={22} />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Actions */}
-        <div className="px-4 py-4 border-t border-white/[0.06] space-y-2">
+        {/* ── Info rows ── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+          {rows.map(([label, value], i) => (
+            <div
+              key={label}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "90px 1fr",
+                gap: 12,
+                padding: "11px 20px",
+                borderBottom: i < rows.length - 1 ? "1px solid var(--border-sub)" : "none",
+                alignItems: "start",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 500, paddingTop: 1 }}>
+                {label}
+              </span>
+              <span style={{
+                fontSize: label === "Extension ID" ? 10 : 12,
+                color: "var(--text-2)",
+                fontFamily: label === "Extension ID" ? "monospace" : "inherit",
+                wordBreak: "break-all",
+                lineHeight: 1.5,
+              }}>
+                {value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Actions ── */}
+        <div style={{
+          padding: "12px 16px",
+          borderTop: "1px solid var(--border-sub)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          flexShrink: 0,
+        }}>
           <button
             onClick={handleOpenFolder}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-white/60 hover:text-white/80 text-xs font-medium transition-all"
+            style={{
+              width: "100%",
+              padding: "10px 0",
+              borderRadius: 12,
+              fontSize: 12,
+              fontWeight: 500,
+              color: "var(--text-2)",
+              background: "var(--elevated)",
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              transition: "background 0.15s, color 0.15s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = "var(--card)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = "var(--elevated)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+            }}
           >
             <FolderOpen size={13} />
-            Klasörü Aç
+            Open Folder
           </button>
+
           <button
             onClick={() => onUninstall(ext)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/15 text-red-400 hover:text-red-300 text-xs font-medium transition-all border border-red-500/10"
+            style={{
+              width: "100%",
+              padding: "10px 0",
+              borderRadius: 12,
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#f87171",
+              background: "rgba(239,68,68,0.07)",
+              border: "1px solid rgba(239,68,68,0.15)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              transition: "background 0.15s, color 0.15s, border-color 0.15s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.14)";
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.28)";
+              (e.currentTarget as HTMLElement).style.color = "#fca5a5";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.07)";
+              (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.15)";
+              (e.currentTarget as HTMLElement).style.color = "#f87171";
+            }}
           >
             <Trash2 size={13} />
-            Kaldır
+            Remove Extension
           </button>
         </div>
       </motion.div>

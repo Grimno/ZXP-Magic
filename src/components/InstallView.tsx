@@ -1,22 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, Loader2, ArrowRight, Puzzle, Check } from "lucide-react";
+import { ArrowRight, Check, Upload } from "lucide-react";
 import type { ExtensionInfo } from "../types";
-
-const APP_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  "Premiere Pro":       { bg: "bg-violet-500/15", text: "text-violet-300", dot: "bg-violet-400" },
-  "After Effects":      { bg: "bg-blue-500/15",   text: "text-blue-300",   dot: "bg-blue-400" },
-  "Photoshop":          { bg: "bg-sky-500/15",     text: "text-sky-300",    dot: "bg-sky-400" },
-  "Illustrator":        { bg: "bg-orange-500/15",  text: "text-orange-300", dot: "bg-orange-400" },
-  "InDesign":           { bg: "bg-pink-500/15",    text: "text-pink-300",   dot: "bg-pink-400" },
-  "Audition":           { bg: "bg-green-500/15",   text: "text-green-300",  dot: "bg-green-400" },
-  "Animate":            { bg: "bg-yellow-500/15",  text: "text-yellow-300", dot: "bg-yellow-400" },
-  "Premiere Rush":      { bg: "bg-purple-500/15",  text: "text-purple-300", dot: "bg-purple-400" },
-  "Character Animator": { bg: "bg-teal-500/15",    text: "text-teal-300",   dot: "bg-teal-400" },
-};
-
-function getAppColor(name: string) {
-  return APP_COLORS[name] || { bg: "bg-white/8", text: "text-white/40", dot: "bg-white/25" };
-}
+import { AppBadge, ExtIconFallback } from "../lib/appColors";
 
 interface InstallViewProps {
   installing: boolean;
@@ -29,48 +14,57 @@ interface InstallViewProps {
 
 export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, onGoToLibrary }: InstallViewProps) {
   return (
-    <div className="h-full flex items-center justify-center px-8 py-6 relative overflow-hidden">
-
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-600/[0.04] rounded-full blur-[100px]" />
-      </div>
-
+    <div className="h-full flex items-center justify-center px-10 py-8">
       <AnimatePresence mode="wait">
 
-        {/* ── Installing ── */}
+        {/* ── Installing state ── */}
         {installing && (
           <motion.div
             key="installing"
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            className="flex flex-col items-center gap-7"
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col items-center gap-8"
           >
-            <div className="relative w-20 h-20">
+            {/* Spinner */}
+            <div className="relative w-[72px] h-[72px]">
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 rounded-full border-[1.5px] border-transparent border-t-blue-500 border-r-blue-500/20"
+                transition={{ duration: 2.8, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 rounded-full"
+                style={{ border: "1.5px solid transparent", borderTopColor: "var(--accent)", borderRightColor: "rgba(59,130,246,0.15)" }}
               />
               <motion.div
                 animate={{ rotate: -360 }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-2.5 rounded-full border-[1.5px] border-transparent border-t-blue-400/40"
+                className="absolute inset-[10px] rounded-full"
+                style={{ border: "1px solid transparent", borderTopColor: "rgba(59,130,246,0.35)" }}
               />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Loader2 size={22} className="text-blue-400/70 animate-spin" />
+              <div
+                className="absolute inset-0 m-auto w-8 h-8 rounded-xl flex items-center justify-center"
+                style={{ background: "var(--card)", border: "1px solid var(--border-sub)" }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
               </div>
             </div>
+
             <div className="text-center space-y-1.5">
-              <p className="text-base font-semibold text-white/80">Installing…</p>
-              <p className="text-xs text-white/30">Copying extension files</p>
+              <p className="text-[15px] font-semibold" style={{ color: "var(--text)" }}>
+                Installing extension
+              </p>
+              <p className="text-[13px]" style={{ color: "var(--text-2)" }}>
+                Copying files to Adobe CEP folder
+              </p>
             </div>
-            <div className="w-48 h-px bg-white/5 rounded-full overflow-hidden">
+
+            {/* Progress shimmer */}
+            <div className="w-40 h-px rounded-full overflow-hidden" style={{ background: "var(--elevated)" }}>
               <motion.div
-                className="h-full bg-gradient-to-r from-transparent via-blue-500 to-transparent"
+                className="h-full rounded-full"
+                style={{ background: "linear-gradient(90deg, transparent, var(--accent), transparent)" }}
                 animate={{ x: ["-100%", "200%"] }}
-                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
               />
             </div>
           </motion.div>
@@ -80,31 +74,59 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
         {!installing && lastInstalled && (
           <motion.div
             key="success"
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ type: "spring", stiffness: 280, damping: 26 }}
-            className="w-full max-w-[420px]"
+            exit={{ opacity: 0, y: -14 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            className="w-full"
+            style={{ maxWidth: 440 }}
           >
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
-
-              {/* Top success bar */}
-              <div className="flex items-center gap-3 px-5 py-4 bg-emerald-500/[0.08] border-b border-emerald-500/[0.12]">
-                <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                  <Check size={14} className="text-emerald-400" strokeWidth={2.5} />
-                </div>
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                boxShadow: "0 24px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03)",
+              }}
+            >
+              {/* Success banner */}
+              <div
+                className="flex items-center gap-3 px-5 py-4"
+                style={{
+                  background: "rgba(16,185,129,0.07)",
+                  borderBottom: "1px solid rgba(16,185,129,0.12)",
+                }}
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20, delay: 0.1 }}
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    background: "rgba(16,185,129,0.15)",
+                    border: "1px solid rgba(16,185,129,0.3)",
+                  }}
+                >
+                  <Check size={13} className="text-emerald-400" strokeWidth={2.5} />
+                </motion.div>
                 <div>
-                  <p className="text-sm font-semibold text-emerald-300">Successfully Installed</p>
-                  <p className="text-[11px] text-emerald-400/50 mt-0.5">Restart Adobe apps to activate</p>
+                  <p className="text-[13px] font-semibold text-emerald-400">Installation successful</p>
+                  <p className="text-[11px] text-emerald-500/50 mt-0.5">Restart your Adobe app to activate</p>
                 </div>
               </div>
 
-              {/* Extension info */}
+              {/* Body */}
               <div className="p-5 space-y-4">
 
                 {/* Icon + name */}
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.07] flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+                    style={{
+                      background: "var(--elevated)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
                     {lastInstalled.icon_path ? (
                       <img
                         src={`https://asset.localhost/${lastInstalled.icon_path.replace(/\\/g, "/")}`}
@@ -113,14 +135,18 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
                     ) : (
-                      <Puzzle size={20} className="text-white/20" />
+                      <ExtIconFallback name={lastInstalled.name} id={lastInstalled.id} size={40} />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-base font-bold text-white/95 truncate">{lastInstalled.name}</p>
-                    <p className="text-xs text-white/30 mt-0.5">
+                    <p className="text-[15px] font-bold truncate" style={{ color: "var(--text)", letterSpacing: "-0.01em" }}>
+                      {lastInstalled.name}
+                    </p>
+                    <p className="text-[12px] mt-0.5" style={{ color: "var(--text-2)" }}>
                       v{lastInstalled.version}
-                      {lastInstalled.author && <span className="ml-2 text-white/20">· {lastInstalled.author}</span>}
+                      {lastInstalled.author && (
+                        <span style={{ color: "var(--text-3)" }}> · {lastInstalled.author}</span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -128,27 +154,23 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
                 {/* Compatible apps */}
                 {lastInstalled.host_list.length > 0 && (
                   <div>
-                    <p className="text-[10px] text-white/20 uppercase tracking-wider font-semibold mb-2">Compatible With</p>
+                    <p
+                      className="text-[10px] uppercase tracking-widest font-semibold mb-2"
+                      style={{ color: "var(--text-3)" }}
+                    >
+                      Compatible with
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {lastInstalled.host_list.map(h => {
-                        const c = getAppColor(h.name);
-                        return (
-                          <span key={h.name} className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-medium ${c.bg} ${c.text}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${c.dot} shrink-0`} />
-                            {h.name}
-                            {h.version && h.version !== "All" && (
-                              <span className="opacity-40 text-[10px]">{h.version}</span>
-                            )}
-                          </span>
-                        );
-                      })}
+                      {lastInstalled.host_list.map(h => (
+                        <AppBadge key={h.name} name={h.name} size={24} />
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {/* Description */}
                 {lastInstalled.description && (
-                  <p className="text-xs text-white/30 leading-relaxed line-clamp-2">
+                  <p className="text-[12px] leading-relaxed line-clamp-2" style={{ color: "var(--text-2)" }}>
                     {lastInstalled.description}
                   </p>
                 )}
@@ -157,13 +179,37 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={onDismiss}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white/40 hover:text-white/60 bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.06] transition-all"
+                    className="flex-1 py-2.5 rounded-xl text-[12px] font-medium transition-all"
+                    style={{
+                      background: "var(--elevated)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-2)",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--card)";
+                      (e.currentTarget as HTMLElement).style.color = "var(--text)";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--elevated)";
+                      (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+                    }}
                   >
-                    Install Another
+                    Install another
                   </button>
                   <button
                     onClick={onGoToLibrary}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-blue-600/20"
+                    className="flex-1 py-2.5 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-all"
+                    style={{
+                      background: "var(--accent)",
+                      color: "#fff",
+                      boxShadow: "0 4px 16px rgba(59,130,246,0.3)",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = "#5b96ff";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--accent)";
+                    }}
                   >
                     View in Library
                     <ArrowRight size={12} />
@@ -181,49 +227,91 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full max-w-[440px]"
+            transition={{ duration: 0.2 }}
+            className="w-full"
+            style={{ maxWidth: 480 }}
           >
             <motion.button
               onClick={onPickFile}
-              whileHover={{ scale: 1.008 }}
-              whileTap={{ scale: 0.995 }}
-              className="w-full group relative flex flex-col items-center justify-center gap-6 rounded-2xl border border-dashed border-white/[0.09] hover:border-blue-500/35 bg-white/[0.02] hover:bg-blue-500/[0.03] transition-all duration-300 cursor-pointer overflow-hidden"
-              style={{ aspectRatio: "16/9" }}
+              whileTap={{ scale: 0.985 }}
+              className="w-full group relative flex flex-col items-center justify-center gap-7 rounded-2xl cursor-pointer overflow-hidden"
+              style={{
+                minHeight: 280,
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                transition: "border-color 0.25s, background 0.25s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,0.4)";
+                (e.currentTarget as HTMLElement).style.background = "var(--elevated)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                (e.currentTarget as HTMLElement).style.background = "var(--card)";
+              }}
             >
+              {/* Ambient glow */}
+              <motion.div
+                animate={{ opacity: [0.3, 0.7, 0.3] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(59,130,246,0.05) 0%, transparent 70%)",
+                }}
+              />
+
               {/* Corner marks */}
               {[
-                "top-4 left-4 border-t border-l rounded-tl-lg",
-                "top-4 right-4 border-t border-r rounded-tr-lg",
-                "bottom-4 left-4 border-b border-l rounded-bl-lg",
-                "bottom-4 right-4 border-b border-r rounded-br-lg",
+                "top-5 left-5 border-t border-l rounded-tl-lg",
+                "top-5 right-5 border-t border-r rounded-tr-lg",
+                "bottom-5 left-5 border-b border-l rounded-bl-lg",
+                "bottom-5 right-5 border-b border-r rounded-br-lg",
               ].map((cls, i) => (
-                <div key={i} className={`absolute w-4 h-4 border-white/15 group-hover:border-blue-500/40 transition-colors duration-300 ${cls}`} />
+                <div
+                  key={i}
+                  className={`absolute w-4 h-4 ${cls} transition-colors duration-300`}
+                  style={{ borderColor: "var(--border)" }}
+                />
               ))}
 
-              {/* Upload icon */}
+              {/* Icon */}
               <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.06] group-hover:border-blue-500/20 group-hover:bg-blue-500/5 flex items-center justify-center transition-all duration-300">
-                  <Upload size={24} className="text-white/20 group-hover:text-blue-400 transition-colors duration-300" />
-                </div>
+                <motion.div
+                  animate={{ y: [0, -4, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center relative"
+                  style={{
+                    background: "var(--elevated)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <Upload size={22} style={{ color: "var(--text-3)" }} />
+                </motion.div>
                 <motion.div
                   animate={{ opacity: [0.2, 0.5, 0.2] }}
-                  transition={{ duration: 2.8, repeat: Infinity }}
-                  className="absolute inset-0 rounded-2xl bg-blue-600/10 blur-xl group-hover:bg-blue-600/20"
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="absolute inset-0 rounded-2xl pointer-events-none"
+                  style={{ background: "var(--accent-glow)", filter: "blur(20px)" }}
                 />
               </div>
 
               {/* Text */}
-              <div className="text-center space-y-2">
-                <p className="text-[15px] font-semibold text-white/50 group-hover:text-white/75 transition-colors duration-200">
+              <div className="text-center space-y-2 relative">
+                <p className="text-[15px] font-semibold" style={{ color: "var(--text-2)", letterSpacing: "-0.01em" }}>
                   Drop your extension here
                 </p>
-                <p className="text-sm text-white/20">
+                <p className="text-[13px]" style={{ color: "var(--text-3)" }}>
                   or{" "}
-                  <span className="text-blue-400/70 group-hover:text-blue-400 transition-colors">
+                  <span style={{ color: "var(--accent)", opacity: 0.8 }}>
                     browse files
                   </span>
                 </p>
-                <p className="text-[11px] text-white/12 font-mono tracking-wide">.zxp · .zxpinstall</p>
+                <p
+                  className="text-[11px] font-mono tracking-widest"
+                  style={{ color: "var(--text-3)", opacity: 0.6 }}
+                >
+                  .zxp · .zxpinstall
+                </p>
               </div>
             </motion.button>
           </motion.div>

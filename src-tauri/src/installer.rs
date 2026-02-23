@@ -323,13 +323,6 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
     let mut cep_version = String::new();
     let mut host_list: Vec<HostApp> = Vec::new();
 
-    // Simple XML attribute extraction (no full parser needed for manifest.xml)
-    fn attr(tag: &str, attr_name: &str) -> Option<String> {
-        let _ = tag;
-        let _ = attr_name;
-        None
-    }
-
     // Extract with regex-like string operations
     for line in xml.lines() {
         let line = line.trim();
@@ -347,7 +340,12 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
             }
         }
 
-        if line.contains("<ExtensionList>") || line.contains("<ExtensionBundle") {
+        if line.contains("<ExtensionManifest") || line.contains("<ExtensionBundle") {
+            if let Some(v) = extract_attr(line, "ExtensionBundleName") {
+                if name.is_empty() {
+                    name = v;
+                }
+            }
             if let Some(v) = extract_attr(line, "ExtensionBundleId") {
                 if id.is_empty() {
                     id = v;
@@ -359,7 +357,17 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
                 }
             }
             if let Some(v) = extract_attr(line, "CEPVersion") {
-                cep_version = v;
+                if cep_version.is_empty() {
+                    cep_version = v;
+                }
+            }
+        }
+
+        if line.contains("<ExtensionList>") {
+            if let Some(v) = extract_attr(line, "ExtensionBundleId") {
+                if id.is_empty() {
+                    id = v;
+                }
             }
         }
 
@@ -374,8 +382,19 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
             }
         }
 
+        // <Menu> is the user-visible panel name in CEP manifests
+        if (line.starts_with("<Menu>") || line.contains("<Menu>")) && name.is_empty() {
+            name = extract_text(line, "Menu");
+        }
+
+        // <Name> in CEP is usually the internal panel type name ("main", "panel", etc.)
+        // Only use it if nothing better has been found yet, and it's not a generic term
         if (line.starts_with("<Name>") || line.contains("<Name>")) && name.is_empty() {
-            name = extract_text(line, "Name");
+            let candidate = extract_text(line, "Name");
+            let generic = ["main", "panel", "extension", "index", "ui", "app", "core", "popup"];
+            if !generic.contains(&candidate.to_lowercase().as_str()) && !candidate.is_empty() {
+                name = candidate;
+            }
         }
 
         if (line.starts_with("<Description>") || line.contains("<Description>"))
@@ -389,14 +408,29 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
         }
     }
 
-    // Fallback: use ID as name if name is empty
+    // Fallback: derive a readable name from the extension ID
     if name.is_empty() && !id.is_empty() {
-        name = id
-            .split('.')
-            .last()
-            .unwrap_or(&id)
-            .replace('-', " ")
-            .replace('_', " ");
+        let generic = ["main", "panel", "extension", "index", "ui", "app", "core", "popup", "host"];
+        let parts: Vec<&str> = id.split('.').collect();
+
+        // Find the last non-generic, non-TLD segment
+        // e.g. "com.example.myCoolExt.main" → "myCoolExt"
+        let raw = parts
+            .iter()
+            .rev()
+            .find(|p| {
+                let lower = p.to_lowercase();
+                !generic.contains(&lower.as_str())
+                    && lower != "com"
+                    && lower != "net"
+                    && lower != "org"
+                    && lower != "io"
+                    && p.len() > 2
+            })
+            .copied()
+            .unwrap_or(parts.last().copied().unwrap_or(&id));
+
+        name = raw.replace('-', " ").replace('_', " ");
         // Title case
         name = name
             .split_whitespace()

@@ -1,23 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Puzzle, Trash2, RefreshCw, Package } from "lucide-react";
+import { Package, RefreshCw, Trash2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { ExtensionInfo } from "../types";
-
-const APP_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  "Premiere Pro":       { bg: "bg-violet-500/15", text: "text-violet-300", dot: "bg-violet-400" },
-  "After Effects":      { bg: "bg-blue-500/15",   text: "text-blue-300",   dot: "bg-blue-400" },
-  "Photoshop":          { bg: "bg-sky-500/15",     text: "text-sky-300",    dot: "bg-sky-400" },
-  "Illustrator":        { bg: "bg-orange-500/15",  text: "text-orange-300", dot: "bg-orange-400" },
-  "InDesign":           { bg: "bg-pink-500/15",    text: "text-pink-300",   dot: "bg-pink-400" },
-  "Audition":           { bg: "bg-green-500/15",   text: "text-green-300",  dot: "bg-green-400" },
-  "Animate":            { bg: "bg-yellow-500/15",  text: "text-yellow-300", dot: "bg-yellow-400" },
-  "Premiere Rush":      { bg: "bg-purple-500/15",  text: "text-purple-300", dot: "bg-purple-400" },
-  "Character Animator": { bg: "bg-teal-500/15",    text: "text-teal-300",   dot: "bg-teal-400" },
-};
-
-function getAppColor(name: string) {
-  return APP_COLORS[name] || { bg: "bg-white/8", text: "text-white/40", dot: "bg-white/25" };
-}
+import { AppBadge, ExtIconFallback } from "../lib/appColors";
 
 interface LibraryViewProps {
   extensions: ExtensionInfo[];
@@ -27,17 +12,44 @@ interface LibraryViewProps {
   onRefresh: () => Promise<void>;
 }
 
-function SkeletonRow() {
+// Returns the raw accent color value for the left stripe
+const APP_ACCENT_HEX: Record<string, string> = {
+  "Premiere Pro":       "#8b5cf6",
+  "After Effects":      "#3b82f6",
+  "Photoshop":          "#0ea5e9",
+  "Illustrator":        "#f97316",
+  "InDesign":           "#ec4899",
+  "Audition":           "#10b981",
+  "Animate":            "#f59e0b",
+  "Premiere Rush":      "#a855f7",
+  "Character Animator": "#14b8a6",
+};
+
+function getPrimaryAccent(hostList: { name: string }[]): string {
+  for (const h of hostList) {
+    if (APP_ACCENT_HEX[h.name]) return APP_ACCENT_HEX[h.name];
+  }
+  return "#4f8df7";
+}
+
+function SkeletonCard() {
   return (
-    <div className="flex items-center gap-4 px-6 py-4 border-b border-white/[0.04] animate-pulse">
-      <div className="w-10 h-10 rounded-xl bg-white/5 shrink-0" />
-      <div className="flex-1 space-y-2">
-        <div className="h-3.5 bg-white/5 rounded-lg w-1/3" />
-        <div className="h-2.5 bg-white/5 rounded-lg w-1/5" />
-      </div>
-      <div className="flex gap-1.5">
-        <div className="h-6 w-20 bg-white/5 rounded-lg" />
-        <div className="h-6 w-16 bg-white/5 rounded-lg" />
+    <div
+      className="flex items-stretch rounded-xl overflow-hidden animate-pulse"
+      style={{ background: "var(--card)", border: "1px solid var(--border-sub)", height: 80 }}
+    >
+      <div className="w-1 shrink-0" style={{ background: "var(--elevated)" }} />
+      <div className="flex items-center gap-4 px-4 flex-1">
+        <div className="w-12 h-12 rounded-xl shrink-0" style={{ background: "var(--elevated)" }} />
+        <div className="flex-1 space-y-2.5">
+          <div className="h-3 rounded-lg w-2/5" style={{ background: "var(--elevated)" }} />
+          <div className="h-2 rounded-lg w-1/4" style={{ background: "var(--elevated)" }} />
+          <div className="h-2 rounded-lg w-1/3" style={{ background: "var(--elevated)" }} />
+        </div>
+        <div className="flex flex-col gap-1.5 items-end">
+          <div className="h-5 w-24 rounded-lg" style={{ background: "var(--elevated)" }} />
+          <div className="h-5 w-20 rounded-lg" style={{ background: "var(--elevated)" }} />
+        </div>
       </div>
     </div>
   );
@@ -55,21 +67,32 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
 
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto">
-        {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
+      <div className="h-full overflow-y-auto px-4 py-4 flex flex-col gap-2.5">
+        {[1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
       </div>
     );
   }
 
   if (extensions.length === 0) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-4 pb-10">
-        <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-          <Package size={26} className="text-white/15" />
+      <div className="h-full flex flex-col items-center justify-center gap-5 pb-8">
+        <div
+          className="w-20 h-20 rounded-3xl flex items-center justify-center"
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+          }}
+        >
+          <Package size={28} style={{ color: "var(--text-3)" }} />
         </div>
         <div className="text-center">
-          <p className="text-sm font-semibold text-white/35">Kitaplık boş / Library empty</p>
-          <p className="text-xs text-white/20 mt-1">Kur sekmesinden extension ekle</p>
+          <p className="text-[15px] font-semibold" style={{ color: "var(--text-2)", letterSpacing: "-0.01em" }}>
+            No extensions installed
+          </p>
+          <p className="text-[12px] mt-1.5" style={{ color: "var(--text-3)" }}>
+            Go to Install tab to add your first one
+          </p>
         </div>
       </div>
     );
@@ -77,97 +100,186 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.04]">
-        <p className="text-xs text-white/25">
-          <span className="text-white/50 font-semibold">{extensions.length}</span>
-          <span className="ml-1">extension yüklü</span>
+      <div
+        className="flex items-center justify-between px-5 shrink-0"
+        style={{ height: 44, borderBottom: "1px solid var(--border-sub)" }}
+      >
+        <p className="text-[12px]" style={{ color: "var(--text-3)" }}>
+          <span className="font-semibold" style={{ color: "var(--text-2)" }}>
+            {extensions.length}
+          </span>{" "}
+          {extensions.length === 1 ? "extension" : "extensions"} installed
         </p>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-1.5 text-xs text-white/25 hover:text-white/50 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/[0.04] disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-all"
+          style={{ fontSize: 11, color: "var(--text-3)", background: "transparent" }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = "var(--elevated)";
+            (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+            (e.currentTarget as HTMLElement).style.color = "var(--text-3)";
+          }}
         >
-          <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
-          Yenile
+          <RefreshCw size={10} className={refreshing ? "animate-spin" : ""} />
+          Refresh
         </button>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto">
-        <AnimatePresence>
-          {extensions.map((ext, i) => (
-            <motion.div
-              key={ext.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04, type: "spring", stiffness: 300, damping: 30 }}
-              onMouseEnter={() => setHoveredId(ext.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              onClick={() => onSelect(ext)}
-              className={`flex items-center gap-4 px-6 py-4 border-b border-white/[0.04] cursor-pointer transition-colors duration-150 ${
-                hoveredId === ext.id ? "bg-white/[0.04]" : ""
-              }`}
-            >
-              {/* Icon */}
-              <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center shrink-0 overflow-hidden">
-                {ext.icon_path ? (
-                  <img
-                    src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
-                    alt=""
-                    className="w-full h-full object-contain p-1.5"
-                    onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+      {/* Card list */}
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="flex flex-col gap-2.5">
+          <AnimatePresence>
+            {extensions.map((ext, i) => {
+              const hovered = hoveredId === ext.id;
+              const accent = getPrimaryAccent(ext.host_list);
+
+              return (
+                <motion.div
+                  key={ext.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.045, type: "spring", stiffness: 340, damping: 30 }}
+                  onMouseEnter={() => setHoveredId(ext.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => onSelect(ext)}
+                  className="flex items-stretch rounded-xl overflow-hidden cursor-pointer"
+                  style={{
+                    background: hovered ? "var(--elevated)" : "var(--card)",
+                    border: `1px solid ${hovered ? "var(--border)" : "var(--border-sub)"}`,
+                    boxShadow: hovered ? "0 6px 20px rgba(0,0,0,0.25)" : "none",
+                    transition: "background 0.15s, border-color 0.15s, box-shadow 0.15s",
+                  }}
+                >
+                  {/* Left accent bar */}
+                  <div
+                    className="w-[3px] shrink-0"
+                    style={{
+                      background: accent,
+                      opacity: hovered ? 0.9 : 0.45,
+                      transition: "opacity 0.15s",
+                    }}
                   />
-                ) : (
-                  <Puzzle size={16} className="text-white/20" />
-                )}
-              </div>
 
-              {/* Name + meta */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white/90 truncate">{ext.name}</p>
-                <p className="text-[11px] text-white/25 mt-0.5">
-                  v{ext.version}{ext.author ? ` · ${ext.author}` : ""}
-                </p>
-              </div>
+                  {/* Content */}
+                  <div className="flex items-center gap-4 px-4 py-4 flex-1 min-w-0">
 
-              {/* Host tags */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                {ext.host_list.slice(0, 2).map(h => {
-                  const c = getAppColor(h.name);
-                  return (
-                    <span key={h.name} className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg font-medium ${c.bg} ${c.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${c.dot} shrink-0`} />
-                      {h.name}
-                    </span>
-                  );
-                })}
-                {ext.host_list.length > 2 && (
-                  <span className="text-[11px] px-2 py-1 rounded-lg bg-white/5 text-white/25">
-                    +{ext.host_list.length - 2}
-                  </span>
-                )}
-              </div>
+                    {/* Icon */}
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+                      style={{
+                        background: "var(--elevated)",
+                        border: "1px solid var(--border)",
+                        boxShadow: `0 0 0 3px ${accent}18`,
+                      }}
+                    >
+                      {ext.icon_path ? (
+                        <img
+                          src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
+                          alt=""
+                          className="w-full h-full object-contain p-2"
+                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : (
+                        <ExtIconFallback name={ext.name} id={ext.id} size={44} />
+                      )}
+                    </div>
 
-              {/* Uninstall */}
-              <AnimatePresence>
-                {hoveredId === ext.id && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.1 }}
-                    onClick={e => { e.stopPropagation(); onUninstall(ext); }}
-                    className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-red-400 bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.06] hover:border-red-500/20 px-2.5 py-1.5 rounded-lg transition-all shrink-0"
-                  >
-                    <Trash2 size={11} />
-                    Kaldır
-                  </motion.button>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+                    {/* Text content */}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-[14px] font-semibold truncate"
+                        style={{ color: "var(--text)", letterSpacing: "-0.015em" }}
+                      >
+                        {ext.name}
+                      </p>
+                      <p className="text-[11px] mt-0.5" style={{ color: "var(--text-3)" }}>
+                        v{ext.version}
+                        {ext.author && <span> · {ext.author}</span>}
+                      </p>
+                      {ext.description && (
+                        <p
+                          className="text-[11px] mt-1 truncate"
+                          style={{ color: "var(--text-3)", maxWidth: 340 }}
+                        >
+                          {ext.description}
+                        </p>
+                      )}
+                      {/* App badges */}
+                      {ext.host_list.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          {ext.host_list.slice(0, 5).map(h => (
+                            <AppBadge key={h.name} name={h.name} size={20} />
+                          ))}
+                          {ext.host_list.length > 5 && (
+                            <span
+                              className="text-[10px] px-1.5 py-[2px] rounded-md font-medium"
+                              style={{
+                                background: "var(--elevated)",
+                                color: "var(--text-3)",
+                                border: "1px solid var(--border-sub)",
+                              }}
+                            >
+                              +{ext.host_list.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: remove + chevron */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <AnimatePresence>
+                        {hovered && (
+                          <motion.button
+                            initial={{ opacity: 0, x: 6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 6 }}
+                            transition={{ duration: 0.12 }}
+                            onClick={e => { e.stopPropagation(); onUninstall(ext); }}
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-2)",
+                              background: "var(--surface)",
+                              border: "1px solid var(--border)",
+                            }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLElement).style.color = "#f87171";
+                              (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.08)";
+                              (e.currentTarget as HTMLElement).style.borderColor = "rgba(239,68,68,0.2)";
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+                              (e.currentTarget as HTMLElement).style.background = "var(--surface)";
+                              (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                            }}
+                          >
+                            <Trash2 size={10} />
+                            Remove
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+
+                      <ChevronRight
+                        size={15}
+                        style={{
+                          color: hovered ? accent : "var(--border)",
+                          transition: "color 0.15s",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

@@ -71,7 +71,7 @@ export default function App() {
   const handleUninstall = async (ext: ExtensionInfo) => {
     try {
       await invoke("uninstall_extension", { extensionId: ext.id });
-      showToast({ type: "success", message: `'${ext.name}' kaldırıldı.` });
+      showToast({ type: "success", message: `${ext.name} removed successfully.` });
       setSelectedExt(null);
       if (lastInstalled?.id === ext.id) setLastInstalled(null);
       await loadExtensions();
@@ -80,24 +80,18 @@ export default function App() {
     }
   };
 
-  // Drag & drop — Tauri native events
   useEffect(() => {
     let unlistenHover: (() => void) | undefined;
     let unlistenDrop: (() => void) | undefined;
     let unlistenLeave: (() => void) | undefined;
 
-    listen("tauri://drag-over", () => {
-      setDragOver(true);
-    }).then(fn => { unlistenHover = fn; });
-
-    listen("tauri://drag-leave", () => {
-      setDragOver(false);
-    }).then(fn => { unlistenLeave = fn; });
+    listen("tauri://drag-over", () => setDragOver(true)).then(fn => { unlistenHover = fn; });
+    listen("tauri://drag-leave", () => setDragOver(false)).then(fn => { unlistenLeave = fn; });
 
     listen<{ paths: string[] }>("tauri://drag-drop", async (event) => {
       setDragOver(false);
       const paths = event.payload.paths;
-      if (!paths || paths.length === 0) return;
+      if (!paths?.length) return;
       const path = paths[0];
       if (path.endsWith(".zxp") || path.endsWith(".zxpinstall")) {
         await handleInstall(path);
@@ -106,87 +100,184 @@ export default function App() {
       }
     }).then(fn => { unlistenDrop = fn; });
 
-    return () => {
-      unlistenHover?.();
-      unlistenLeave?.();
-      unlistenDrop?.();
-    };
+    return () => { unlistenHover?.(); unlistenLeave?.(); unlistenDrop?.(); };
   }, []);
 
-  return (
-    <div className="flex flex-col h-screen bg-[#080a0f] text-white overflow-hidden select-none">
+  const activeTab = showSettings ? null : tab;
 
-      {/* ── Header ── */}
-      <header className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
-        {/* Logo + name */}
-        <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="ZXP Magic" className="w-7 h-7 rounded-xl object-cover" />
-          <div className="leading-tight">
-            <p className="text-[13px] font-bold text-white tracking-tight">ZXP Magic</p>
-            <p className="text-[10px] text-white/30 leading-none">by Grimno</p>
+  return (
+    <div
+      className="flex flex-col h-screen overflow-hidden select-none"
+      style={{ background: "var(--bg)", color: "var(--text)" }}
+    >
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header
+        className="flex items-center justify-between shrink-0"
+        style={{
+          height: 56,
+          background: "var(--surface)",
+          paddingLeft: 20,
+          paddingRight: 20,
+        }}
+      >
+
+        {/* Left — Logo */}
+        <div className="flex items-center gap-2.5" style={{ width: 130 }}>
+          <div className="relative shrink-0">
+            <img
+              src="/logo.png"
+              alt="ZXP Magic"
+              className="w-7 h-7 object-cover"
+              style={{ borderRadius: 9 }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ borderRadius: 9, boxShadow: "0 0 14px rgba(79,141,247,0.35)" }}
+            />
+          </div>
+          <div className="leading-none">
+            <p
+              className="text-[13px] font-semibold"
+              style={{ color: "var(--text)", letterSpacing: "-0.015em" }}
+            >
+              ZXP Magic
+            </p>
+            <p className="text-[10px] mt-[3px]" style={{ color: "var(--text-3)" }}>
+              by Grimno
+            </p>
           </div>
         </div>
 
-        {/* Settings */}
-        <button
-          onClick={() => { setShowSettings(s => !s); }}
-          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-            showSettings
-              ? "bg-white/10 text-white/80"
-              : "text-white/25 hover:text-white/60 hover:bg-white/[0.06]"
-          }`}
-        >
-          <Settings size={15} />
-        </button>
+        {/* Center — Segment control */}
+        <AnimatePresence mode="wait">
+          {!showSettings && (
+            <motion.div
+              key="tabs"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center gap-2 p-1.5 rounded-xl"
+              style={{
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              {(["install", "library"] as Tab[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className="relative flex items-center gap-2 rounded-lg transition-colors"
+                  style={{ height: 32, paddingLeft: 18, paddingRight: 18 }}
+                >
+                  {/* Animated background */}
+                  {activeTab === t && (
+                    <motion.div
+                      layoutId="tab-pill"
+                      className="absolute inset-0 rounded-lg"
+                      style={{
+                        background: "var(--elevated)",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)",
+                        border: "1px solid var(--border)",
+                      }}
+                      transition={{ type: "spring", stiffness: 500, damping: 42 }}
+                    />
+                  )}
+
+                  {/* Label */}
+                  <span
+                    className="relative z-10 text-[12.5px] font-medium transition-colors duration-150"
+                    style={{
+                      color: activeTab === t ? "var(--text)" : "var(--text-2)",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    {t === "install" ? "Install" : "Library"}
+                  </span>
+
+                  {/* Badge */}
+                  {t === "library" && extensions.length > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="relative z-10 flex items-center justify-center text-[10px] font-semibold rounded-md px-1.5"
+                      style={{
+                        height: 17,
+                        minWidth: 17,
+                        background: activeTab === "library" ? "var(--accent-dim)" : "rgba(255,255,255,0.06)",
+                        color: activeTab === "library" ? "var(--accent)" : "var(--text-3)",
+                      }}
+                    >
+                      {extensions.length}
+                    </motion.span>
+                  )}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Right — Settings button */}
+        <div className="flex justify-end" style={{ width: 130 }}>
+          <motion.button
+            onClick={() => setShowSettings(s => !s)}
+            whileTap={{ scale: 0.9 }}
+            className="flex items-center gap-1.5 rounded-lg px-3 transition-all"
+            style={{
+              height: 32,
+              background: showSettings ? "var(--elevated)" : "transparent",
+              border: `1px solid ${showSettings ? "var(--border)" : "transparent"}`,
+              color: showSettings ? "var(--text)" : "var(--text-2)",
+            }}
+            onMouseEnter={e => {
+              if (!showSettings) {
+                (e.currentTarget as HTMLElement).style.background = "var(--elevated)";
+                (e.currentTarget as HTMLElement).style.color = "var(--text)";
+              }
+            }}
+            onMouseLeave={e => {
+              if (!showSettings) {
+                (e.currentTarget as HTMLElement).style.background = "transparent";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+              }
+            }}
+          >
+            <motion.div
+              animate={{ rotate: showSettings ? 90 : 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            >
+              <Settings size={13} />
+            </motion.div>
+            <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: "-0.01em" }}>
+              Settings
+            </span>
+          </motion.button>
+        </div>
       </header>
 
-      {/* ── Tab bar ── */}
-      {!showSettings && (
-        <div className="flex border-b border-white/[0.06] px-5">
-          {(["install", "library"] as Tab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`relative py-2.5 mr-6 text-[13px] font-semibold transition-colors duration-150 ${
-                tab === t ? "text-white" : "text-white/30 hover:text-white/55"
-              }`}
-            >
-              {t === "install" ? "Kur" : (
-                <span className="flex items-center gap-2">
-                  Kitaplık
-                  {extensions.length > 0 && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-white/8 text-white/40 rounded-md">
-                      {extensions.length}
-                    </span>
-                  )}
-                </span>
-              )}
-              {tab === t && (
-                <motion.div
-                  layoutId="tab-underline"
-                  className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-500 rounded-full"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Main content ── */}
+      {/* ── Main Content ──────────────────────────────────────── */}
       <main className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           {showSettings ? (
-            <motion.div key="settings"
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.18 }} className="h-full overflow-y-auto"
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full"
             >
               <SettingsPanel />
             </motion.div>
           ) : tab === "install" ? (
-            <motion.div key="install"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }} className="h-full"
+            <motion.div
+              key="install"
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -6 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full"
             >
               <InstallView
                 installing={installing}
@@ -198,9 +289,13 @@ export default function App() {
               />
             </motion.div>
           ) : (
-            <motion.div key="library"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }} className="h-full"
+            <motion.div
+              key="library"
+              initial={{ opacity: 0, x: 6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 6 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full"
             >
               <LibraryView
                 extensions={extensions}
@@ -214,6 +309,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
+      {/* ── Extension Detail Panel ────────────────────────────── */}
       <AnimatePresence>
         {selectedExt && (
           <ExtensionDetail
@@ -224,29 +320,71 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* ── Toast ─────────────────────────────────────────────── */}
       <AnimatePresence>
         {toast && <InstallToast toast={toast} />}
       </AnimatePresence>
 
-      {/* Global drag overlay */}
+      {/* ── Global Drag Overlay ───────────────────────────────── */}
       <AnimatePresence>
         {dragOver && (
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
             className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
           >
-            <div className="absolute inset-0 bg-blue-950/70 backdrop-blur-md" />
-            <div className="relative flex flex-col items-center gap-4">
-              <motion.div
-                animate={{ scale: [1, 1.06, 1] }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
-                className="w-24 h-24 rounded-3xl bg-blue-600/20 border-2 border-blue-500/50 flex items-center justify-center"
-              >
-                <span className="text-5xl">📦</span>
-              </motion.div>
+            <div
+              className="absolute inset-0"
+              style={{ background: "rgba(7,8,15,0.9)", backdropFilter: "blur(20px)" }}
+            />
+
+            <div className="relative flex flex-col items-center gap-6">
+              <div className="relative">
+                <motion.div
+                  animate={{ opacity: [0.4, 0.8, 0.4] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-[-20px] rounded-[32px] pointer-events-none"
+                  style={{ background: "var(--accent-glow)", filter: "blur(28px)" }}
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.03, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-[88px] h-[88px] rounded-3xl flex items-center justify-center"
+                  style={{
+                    background: "var(--card)",
+                    border: "1.5px solid rgba(79,141,247,0.5)",
+                    boxShadow: "0 0 40px rgba(79,141,247,0.18), inset 0 1px 0 rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <svg
+                    width="34"
+                    height="34"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="rgba(79,141,247,0.9)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </motion.div>
+              </div>
+
               <div className="text-center">
-                <p className="text-xl font-bold text-white">Bırak ve Kur</p>
-                <p className="text-sm text-blue-300/60 mt-1">.zxp · .zxpinstall</p>
+                <p
+                  className="text-[17px] font-semibold"
+                  style={{ color: "var(--text)", letterSpacing: "-0.02em" }}
+                >
+                  Drop to install
+                </p>
+                <p className="text-[13px] mt-1.5 font-mono tracking-widest" style={{ color: "var(--text-3)" }}>
+                  .zxp · .zxpinstall
+                </p>
               </div>
             </div>
           </motion.div>
