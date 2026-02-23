@@ -185,7 +185,7 @@ export function ExtensionDetail({ ext, onClose, onUninstall }: ExtensionDetailPr
               justifyContent: "center", gap: 6, marginTop: 12,
             }}>
               {ext.host_list.map(h => (
-                <AppBadge key={h.name} name={h.name} size={22} />
+                <AppBadge key={h.name} name={h.name} size={30} />
               ))}
             </div>
           )}

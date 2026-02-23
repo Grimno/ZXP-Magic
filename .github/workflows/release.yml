@@ -49,6 +49,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: "-"
         with:
           tagName: ${{ github.ref_name }}
           releaseName: ZXP Magic ${{ github.ref_name }}
@@ -61,6 +62,8 @@ jobs:
             - **Windows**: `ZXP Magic Setup.exe`
             - **macOS (Intel)**: `ZXP Magic_x64.dmg`
             - **macOS (Apple Silicon)**: `ZXP Magic_aarch64.dmg`
+
+            > **macOS note:** If macOS says the app is damaged, right-click the .dmg → Open, then drag to Applications. If needed, run: `xattr -cr "/Applications/ZXP Magic.app"`
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}

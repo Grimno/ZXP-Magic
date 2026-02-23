@@ -219,7 +219,7 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
                       {ext.host_list.length > 0 && (
                         <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                           {ext.host_list.slice(0, 5).map(h => (
-                            <AppBadge key={h.name} name={h.name} size={20} />
+                            <AppBadge key={h.name} name={h.name} size={28} />
                           ))}
                           {ext.host_list.length > 5 && (
                             <span

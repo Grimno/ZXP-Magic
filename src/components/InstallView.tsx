@@ -45,7 +45,7 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
                 className="absolute inset-0 m-auto w-8 h-8 rounded-xl flex items-center justify-center"
                 style={{ background: "var(--card)", border: "1px solid var(--border-sub)" }}
               >
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                <Upload size={14} style={{ color: "var(--accent)" }} />
               </div>
             </div>
 
@@ -162,7 +162,7 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {lastInstalled.host_list.map(h => (
-                        <AppBadge key={h.name} name={h.name} size={24} />
+                        <AppBadge key={h.name} name={h.name} size={32} />
                       ))}
                     </div>
                   </div>
