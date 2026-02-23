@@ -117,25 +117,9 @@ pub fn get_extension_info_from_zxp(path: &str) -> Result<ExtensionInfo, String> 
 
 /// Returns true if the extension ID looks like an Adobe built-in (not user-installed)
 fn is_adobe_builtin(id: &str) -> bool {
-    let id_lower = id.to_lowercase();
-    // Adobe's own internal extensions all use com.adobe. prefix
-    // with sub-namespaces like ccx, cepcore, exchange, etc.
-    let adobe_prefixes = [
-        "com.adobe.ccx",
-        "com.adobe.cep",
-        "com.adobe.exchange",
-        "com.adobe.exman",
-        "com.adobe.indesign.cc.extensions",
-        "com.adobe.aam",
-        "com.adobe.acrobat",
-        "com.adobe.bridge",
-        "com.adobe.dreamweaver",
-        "com.adobe.illustrator.cc.extensions",
-        "com.adobe.premiere.extension",
-        "com.adobe.phonegap",
-        "com.adobe.validation",
-    ];
-    adobe_prefixes.iter().any(|p| id_lower.starts_with(p))
+    // All of Adobe's own internal extensions use the com.adobe. namespace.
+    // Users never install extensions under this namespace themselves.
+    id.to_lowercase().starts_with("com.adobe.")
 }
 
 /// Scan all CEP extension folders and return all installed extensions
