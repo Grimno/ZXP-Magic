@@ -115,6 +115,29 @@ pub fn get_extension_info_from_zxp(path: &str) -> Result<ExtensionInfo, String> 
     parse_manifest_xml(&manifest_xml, None)
 }
 
+/// Returns true if the extension ID looks like an Adobe built-in (not user-installed)
+fn is_adobe_builtin(id: &str) -> bool {
+    let id_lower = id.to_lowercase();
+    // Adobe's own internal extensions all use com.adobe. prefix
+    // with sub-namespaces like ccx, cepcore, exchange, etc.
+    let adobe_prefixes = [
+        "com.adobe.ccx",
+        "com.adobe.cep",
+        "com.adobe.exchange",
+        "com.adobe.exman",
+        "com.adobe.indesign.cc.extensions",
+        "com.adobe.aam",
+        "com.adobe.acrobat",
+        "com.adobe.bridge",
+        "com.adobe.dreamweaver",
+        "com.adobe.illustrator.cc.extensions",
+        "com.adobe.premiere.extension",
+        "com.adobe.phonegap",
+        "com.adobe.validation",
+    ];
+    adobe_prefixes.iter().any(|p| id_lower.starts_with(p))
+}
+
 /// Scan all CEP extension folders and return all installed extensions
 pub fn list_extensions() -> Vec<ExtensionInfo> {
     let mut result: Vec<ExtensionInfo> = Vec::new();
@@ -139,6 +162,12 @@ pub fn list_extensions() -> Vec<ExtensionInfo> {
 
                 if let Ok(content) = fs::read_to_string(&manifest_path) {
                     if let Ok(mut info) = parse_manifest_xml(&content, Some(&path)) {
+                        // Skip Adobe built-in extensions from system folders
+                        let is_user_folder = extensions_dir == get_extensions_folder();
+                        if !is_user_folder && is_adobe_builtin(&info.id) {
+                            continue;
+                        }
+
                         // Skip duplicates (same extension in multiple folders)
                         if seen_ids.contains(&info.id) {
                             continue;
