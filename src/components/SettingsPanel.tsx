@@ -157,7 +157,7 @@ export function SettingsPanel() {
         {/* ── About section ── */}
         <Section label="About">
           {[
-            ["Version", "0.1.0"],
+            ["Version", "1.1.0"],
             ["Platform", "Windows · macOS"],
             ["License", "MIT"],
             ["Made by", "Grimno"],

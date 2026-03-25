@@ -158,12 +158,26 @@ pub fn list_extensions() -> Vec<ExtensionInfo> {
                         }
                         seen_ids.insert(info.id.clone());
 
-                        // Look for extension icon
-                        for icon_name in &["icon.png", "Icon.png", "icon.svg", "logo.png"] {
-                            let icon = path.join(icon_name);
-                            if icon.exists() {
-                                info.icon_path = Some(icon.to_string_lossy().to_string());
-                                break;
+                        // Look for extension icon (manifest icon takes priority)
+                        if info.icon_path.is_none() {
+                            // Fallback: scan common icon filenames in extension root
+                            for icon_name in &["icon.png", "Icon.png", "icon.svg", "logo.png", "icon.jpg"] {
+                                let icon = path.join(icon_name);
+                                if icon.exists() {
+                                    info.icon_path = Some(icon.to_string_lossy().to_string());
+                                    break;
+                                }
+                            }
+                        }
+                        // Also check CSXS/ folder for icons
+                        if info.icon_path.is_none() {
+                            let csxs_dir = path.join("CSXS");
+                            for icon_name in &["icon.png", "Icon.png", "icon.svg"] {
+                                let icon = csxs_dir.join(icon_name);
+                                if icon.exists() {
+                                    info.icon_path = Some(icon.to_string_lossy().to_string());
+                                    break;
+                                }
                             }
                         }
                         info.install_path = Some(path.to_string_lossy().to_string());
@@ -285,33 +299,44 @@ pub fn uninstall_extension(extension_id: &str) -> Result<(), String> {
     Err(format!("Extension '{}' not found", extension_id))
 }
 
+/// All known CSXS versions (newest first)
+const CSXS_VERSIONS: &[&str] = &["12", "11", "10", "9", "8", "7"];
+
 /// Read CEP PlayerDebugMode registry/plist setting
 pub fn get_debug_mode() -> bool {
     #[cfg(target_os = "windows")]
     {
         use winreg::RegKey;
         use winreg::enums::HKEY_CURRENT_USER;
-        if let Ok(hkcu) = RegKey::predef(HKEY_CURRENT_USER).open_subkey(
-            "SOFTWARE\\Adobe\\CSXS.11",
-        ) {
-            let val: Result<String, _> = hkcu.get_value("PlayerDebugMode");
-            return val.map(|v| v == "1").unwrap_or(false);
+        // Check newest first — if any version has debug mode on, return true
+        for version in CSXS_VERSIONS {
+            let key_path = format!("SOFTWARE\\Adobe\\CSXS.{}", version);
+            if let Ok(hkcu) = RegKey::predef(HKEY_CURRENT_USER).open_subkey(&key_path) {
+                let val: Result<String, _> = hkcu.get_value("PlayerDebugMode");
+                if val.map(|v| v == "1").unwrap_or(false) {
+                    return true;
+                }
+            }
         }
         false
     }
     #[cfg(target_os = "macos")]
     {
         let home = std::env::var("HOME").unwrap_or_default();
-        let plist = format!(
-            "{}/Library/Preferences/com.adobe.CSXS.11.plist",
-            home
-        );
-        if let Ok(output) = std::process::Command::new("defaults")
-            .args(["read", &plist, "PlayerDebugMode"])
-            .output()
-        {
-            let val = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            return val == "1";
+        for version in CSXS_VERSIONS {
+            let plist = format!(
+                "{}/Library/Preferences/com.adobe.CSXS.{}.plist",
+                home, version
+            );
+            if let Ok(output) = std::process::Command::new("defaults")
+                .args(["read", &plist, "PlayerDebugMode"])
+                .output()
+            {
+                let val = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if val == "1" {
+                    return true;
+                }
+            }
         }
         false
     }
@@ -327,8 +352,8 @@ pub fn set_debug_mode(enabled: bool) -> Result<(), String> {
     {
         use winreg::RegKey;
         use winreg::enums::{HKEY_CURRENT_USER, KEY_SET_VALUE};
-        // Write to all known CSXS versions
-        for version in &["11", "10", "9", "8", "7"] {
+        // Write to all known CSXS versions (including CSXS.12)
+        for version in CSXS_VERSIONS {
             let key_path = format!("SOFTWARE\\Adobe\\CSXS.{}", version);
             if let Ok(key) = RegKey::predef(HKEY_CURRENT_USER)
                 .open_subkey_with_flags(&key_path, KEY_SET_VALUE)
@@ -345,7 +370,7 @@ pub fn set_debug_mode(enabled: bool) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let home = std::env::var("HOME").unwrap_or_default();
-        for version in &["11", "10", "9", "8", "7"] {
+        for version in CSXS_VERSIONS {
             let plist = format!(
                 "{}/Library/Preferences/com.adobe.CSXS.{}.plist",
                 home, version
@@ -362,7 +387,7 @@ pub fn set_debug_mode(enabled: bool) -> Result<(), String> {
 
 // ─── XML Parsing ─────────────────────────────────────────────────────────────
 
-fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionInfo, String> {
+fn parse_manifest_xml(xml: &str, base_path: Option<&Path>) -> Result<ExtensionInfo, String> {
     let mut id = String::new();
     let mut name = String::new();
     let mut version = String::new();
@@ -370,6 +395,8 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
     let mut author = String::new();
     let mut cep_version = String::new();
     let mut host_list: Vec<HostApp> = Vec::new();
+    let mut icon_path: Option<String> = None;
+    let mut required_runtime_version: Option<String> = None;
 
     // Extract with regex-like string operations
     for line in xml.lines() {
@@ -454,6 +481,43 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
         if (line.starts_with("<Author>") || line.contains("<Author>")) && author.is_empty() {
             author = extract_text(line, "Author");
         }
+
+        // Parse RequiredRuntime CSXS version
+        if line.contains("RequiredRuntime") {
+            if let Some(v) = extract_attr(line, "Version") {
+                required_runtime_version = Some(v);
+            }
+        }
+
+        // Parse icon paths from <Icon> elements (prefer DarkNormal > Normal)
+        if line.contains("<Icon") && icon_path.is_none() {
+            let icon_type = extract_attr(line, "Type").unwrap_or_default();
+            let icon_value = if line.contains("/>") {
+                // Self-closing: <Icon Type="Normal">./path</Icon> won't work, try attribute
+                extract_attr(line, "Path").or_else(|| {
+                    // Check for content between <Icon ...> and </Icon> on same line
+                    extract_text(line, "Icon")
+                        .trim_matches(|c: char| c == '.' || c == '/')
+                        .to_string()
+                        .into()
+                })
+            } else {
+                let t = extract_text(line, "Icon");
+                if t.is_empty() { None } else { Some(t) }
+            };
+
+            if let Some(ref val) = icon_value {
+                let clean = val.trim().trim_start_matches("./");
+                if !clean.is_empty() && (icon_type.contains("DarkNormal") || icon_type.contains("Normal") || icon_type.is_empty()) {
+                    if let Some(bp) = base_path {
+                        let full = bp.join(clean);
+                        if full.exists() {
+                            icon_path = Some(full.to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Fallback: derive a readable name from the extension ID
@@ -497,6 +561,13 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
         return Err("Could not find extension ID in manifest".to_string());
     }
 
+    // Use RequiredRuntime version as cep_version fallback
+    if cep_version.is_empty() {
+        if let Some(ref rtv) = required_runtime_version {
+            cep_version = rtv.clone();
+        }
+    }
+
     Ok(ExtensionInfo {
         id,
         name,
@@ -510,7 +581,7 @@ fn parse_manifest_xml(xml: &str, _base_path: Option<&Path>) -> Result<ExtensionI
         host_list,
         cep_version,
         install_path: None,
-        icon_path: None,
+        icon_path,
     })
 }
 
