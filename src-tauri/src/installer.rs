@@ -292,8 +292,40 @@ pub fn uninstall_extension(extension_id: &str) -> Result<(), String> {
     for folder in get_all_extension_folders() {
         let target = folder.join(extension_id);
         if target.exists() {
-            return fs::remove_dir_all(&target)
-                .map_err(|e| format!("Cannot remove extension: {}", e));
+            // Try normal delete first
+            match fs::remove_dir_all(&target) {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    // If normal delete fails (e.g. access denied for system folders),
+                    // try elevated delete on Windows
+                    #[cfg(target_os = "windows")]
+                    {
+                        let target_str = target.to_string_lossy().to_string();
+                        let ps_script = format!(
+                            "Remove-Item -LiteralPath '{}' -Recurse -Force",
+                            target_str.replace("'", "''")
+                        );
+                        let status = std::process::Command::new("powershell")
+                            .args([
+                                "-NoProfile",
+                                "-Command",
+                                &format!(
+                                    "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -Command \"{}\"'",
+                                    ps_script.replace("\"", "`\"")
+                                ),
+                            ])
+                            .status()
+                            .map_err(|e2| format!("Cannot elevate: {}", e2))?;
+
+                        if status.success() && !target.exists() {
+                            return Ok(());
+                        }
+                        return Err(format!("Cannot remove extension (admin rights may be required): {}", e));
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    return Err(format!("Cannot remove extension: {}", e));
+                }
+            }
         }
     }
     Err(format!("Extension '{}' not found", extension_id))

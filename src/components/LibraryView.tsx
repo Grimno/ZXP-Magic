@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Package, RefreshCw, Trash2, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ExtensionInfo } from "../types";
 import { AppBadge, ExtIconFallback } from "../lib/appColors";
 
@@ -185,7 +186,7 @@ export function LibraryView({ extensions, loading, onSelect, onUninstall, onRefr
                     >
                       {ext.icon_path ? (
                         <img
-                          src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
+                          src={convertFileSrc(ext.icon_path)}
                           alt=""
                           className="w-full h-full object-contain p-2"
                           onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}

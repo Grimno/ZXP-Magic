@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Puzzle, Trash2, ChevronRight } from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ExtensionInfo } from "../types";
 
 interface ExtensionGridProps {
@@ -88,7 +89,7 @@ export function ExtensionGrid({ extensions, loading, onSelect, onUninstall }: Ex
               <div className="w-9 h-9 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden">
                 {ext.icon_path ? (
                   <img
-                    src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
+                    src={convertFileSrc(ext.icon_path)}
                     alt=""
                     className="w-full h-full object-contain p-1"
                     onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}

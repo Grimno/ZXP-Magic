@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { X, Trash2, FolderOpen } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import type { ExtensionInfo } from "../types";
 import { AppBadge, ExtIconFallback } from "../lib/appColors";
 
@@ -153,7 +153,7 @@ export function ExtensionDetail({ ext, onClose, onUninstall }: ExtensionDetailPr
           }}>
             {ext.icon_path ? (
               <img
-                src={`https://asset.localhost/${ext.icon_path.replace(/\\/g, "/")}`}
+                src={convertFileSrc(ext.icon_path)}
                 alt=""
                 style={{ width: "100%", height: "100%", objectFit: "contain", padding: 10 }}
                 onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
