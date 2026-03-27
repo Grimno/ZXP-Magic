@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, Upload } from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ExtensionInfo } from "../types";
 import { AppBadge, ExtIconFallback } from "../lib/appColors";
 
@@ -129,7 +130,7 @@ export function InstallView({ installing, lastInstalled, onPickFile, onDismiss, 
                   >
                     {lastInstalled.icon_path ? (
                       <img
-                        src={`https://asset.localhost/${lastInstalled.icon_path.replace(/\\/g, "/")}`}
+                        src={convertFileSrc(lastInstalled.icon_path)}
                         alt=""
                         className="w-full h-full object-contain p-1.5"
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}

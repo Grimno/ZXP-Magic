@@ -160,25 +160,7 @@ pub fn list_extensions() -> Vec<ExtensionInfo> {
 
                         // Look for extension icon (manifest icon takes priority)
                         if info.icon_path.is_none() {
-                            // Fallback: scan common icon filenames in extension root
-                            for icon_name in &["icon.png", "Icon.png", "icon.svg", "logo.png", "icon.jpg"] {
-                                let icon = path.join(icon_name);
-                                if icon.exists() {
-                                    info.icon_path = Some(icon.to_string_lossy().to_string());
-                                    break;
-                                }
-                            }
-                        }
-                        // Also check CSXS/ folder for icons
-                        if info.icon_path.is_none() {
-                            let csxs_dir = path.join("CSXS");
-                            for icon_name in &["icon.png", "Icon.png", "icon.svg"] {
-                                let icon = csxs_dir.join(icon_name);
-                                if icon.exists() {
-                                    info.icon_path = Some(icon.to_string_lossy().to_string());
-                                    break;
-                                }
-                            }
+                            info.icon_path = scan_for_icon(&path);
                         }
                         info.install_path = Some(path.to_string_lossy().to_string());
                         result.push(info);
@@ -190,6 +172,49 @@ pub fn list_extensions() -> Vec<ExtensionInfo> {
 
     result.sort_by(|a, b| a.name.cmp(&b.name));
     result
+}
+
+/// If the target directory contains a single subfolder that has CSXS/manifest.xml,
+/// move its contents up one level (unwrap the wrapper folder).
+fn unwrap_nested_folder(target_dir: &Path) {
+    let entries: Vec<_> = fs::read_dir(target_dir)
+        .ok()
+        .map(|rd| rd.flatten().collect())
+        .unwrap_or_default();
+
+    if entries.len() == 1 && entries[0].path().is_dir() {
+        let wrapper = entries[0].path();
+        if wrapper.join("CSXS").join("manifest.xml").exists() {
+            // Move all contents from wrapper to target_dir
+            if let Ok(inner_entries) = fs::read_dir(&wrapper) {
+                for entry in inner_entries.flatten() {
+                    let dest = target_dir.join(entry.file_name());
+                    let _ = fs::rename(entry.path(), &dest);
+                }
+            }
+            let _ = fs::remove_dir_all(&wrapper);
+        }
+    }
+}
+
+/// Scan common icon filenames in an extension directory
+fn scan_for_icon(dir: &Path) -> Option<String> {
+    // Check root folder
+    for icon_name in &["icon.png", "Icon.png", "icon.svg", "logo.png", "icon.jpg"] {
+        let icon = dir.join(icon_name);
+        if icon.exists() {
+            return Some(icon.to_string_lossy().to_string());
+        }
+    }
+    // Check CSXS/ subfolder
+    let csxs_dir = dir.join("CSXS");
+    for icon_name in &["icon.png", "Icon.png", "icon.svg"] {
+        let icon = csxs_dir.join(icon_name);
+        if icon.exists() {
+            return Some(icon.to_string_lossy().to_string());
+        }
+    }
+    None
 }
 
 /// Install a ZXP file into the extensions folder
@@ -277,55 +302,81 @@ pub fn install_extension(path: &str) -> InstallResult {
         }
     }
 
-    let mut installed_info = info.clone();
+    // Unwrap single nested wrapper folder if present
+    unwrap_nested_folder(&target_dir);
+
+    // Re-parse manifest from the installed location to get proper icon paths
+    let manifest_path = target_dir.join("CSXS").join("manifest.xml");
+    let mut installed_info = if let Ok(content) = fs::read_to_string(&manifest_path) {
+        parse_manifest_xml(&content, Some(&target_dir)).unwrap_or_else(|_| info.clone())
+    } else {
+        info.clone()
+    };
+
     installed_info.install_path = Some(target_dir.to_string_lossy().to_string());
+
+    // Scan for icon if manifest parsing didn't find one
+    if installed_info.icon_path.is_none() {
+        installed_info.icon_path = scan_for_icon(&target_dir);
+    }
 
     InstallResult {
         success: true,
-        message: format!("'{}' installed successfully!", info.name),
+        message: format!("'{}' installed successfully!", installed_info.name),
         extension: Some(installed_info),
     }
 }
 
-/// Remove an installed extension by its ID (searches all known CEP folders)
-pub fn uninstall_extension(extension_id: &str) -> Result<(), String> {
+/// Try to remove a directory, with elevated (UAC) fallback on Windows
+fn remove_extension_dir(target: &Path) -> Result<(), String> {
+    match fs::remove_dir_all(target) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            #[cfg(target_os = "windows")]
+            {
+                let target_str = target.to_string_lossy().to_string();
+                let ps_script = format!(
+                    "Remove-Item -LiteralPath '{}' -Recurse -Force",
+                    target_str.replace("'", "''")
+                );
+                let status = std::process::Command::new("powershell")
+                    .args([
+                        "-NoProfile",
+                        "-Command",
+                        &format!(
+                            "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -Command \"{}\"'",
+                            ps_script.replace("\"", "`\"")
+                        ),
+                    ])
+                    .status()
+                    .map_err(|e2| format!("Cannot elevate: {}", e2))?;
+
+                if status.success() && !target.exists() {
+                    return Ok(());
+                }
+                return Err(format!("Cannot remove extension (admin rights may be required): {}", e));
+            }
+            #[cfg(not(target_os = "windows"))]
+            Err(format!("Cannot remove extension: {}", e))
+        }
+    }
+}
+
+/// Remove an installed extension — prefers install_path, falls back to id-based search
+pub fn uninstall_extension(extension_id: &str, install_path: Option<&str>) -> Result<(), String> {
+    // First try the exact install_path if provided
+    if let Some(path) = install_path {
+        let target = PathBuf::from(path);
+        if target.exists() {
+            return remove_extension_dir(&target);
+        }
+    }
+
+    // Fall back to id-based search across all CEP folders
     for folder in get_all_extension_folders() {
         let target = folder.join(extension_id);
         if target.exists() {
-            // Try normal delete first
-            match fs::remove_dir_all(&target) {
-                Ok(()) => return Ok(()),
-                Err(e) => {
-                    // If normal delete fails (e.g. access denied for system folders),
-                    // try elevated delete on Windows
-                    #[cfg(target_os = "windows")]
-                    {
-                        let target_str = target.to_string_lossy().to_string();
-                        let ps_script = format!(
-                            "Remove-Item -LiteralPath '{}' -Recurse -Force",
-                            target_str.replace("'", "''")
-                        );
-                        let status = std::process::Command::new("powershell")
-                            .args([
-                                "-NoProfile",
-                                "-Command",
-                                &format!(
-                                    "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -Command \"{}\"'",
-                                    ps_script.replace("\"", "`\"")
-                                ),
-                            ])
-                            .status()
-                            .map_err(|e2| format!("Cannot elevate: {}", e2))?;
-
-                        if status.success() && !target.exists() {
-                            return Ok(());
-                        }
-                        return Err(format!("Cannot remove extension (admin rights may be required): {}", e));
-                    }
-                    #[cfg(not(target_os = "windows"))]
-                    return Err(format!("Cannot remove extension: {}", e));
-                }
-            }
+            return remove_extension_dir(&target);
         }
     }
     Err(format!("Extension '{}' not found", extension_id))

@@ -18,8 +18,8 @@ fn install_extension(path: String) -> InstallResult {
 }
 
 #[tauri::command]
-fn uninstall_extension(extension_id: String) -> Result<(), String> {
-    installer::uninstall_extension(&extension_id)
+fn uninstall_extension(extension_id: String, install_path: Option<String>) -> Result<(), String> {
+    installer::uninstall_extension(&extension_id, install_path.as_deref())
 }
 
 #[tauri::command]
@@ -66,6 +66,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             list_extensions,
             get_extension_info_from_zxp,

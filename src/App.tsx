@@ -70,7 +70,7 @@ export default function App() {
 
   const handleUninstall = async (ext: ExtensionInfo) => {
     try {
-      await invoke("uninstall_extension", { extensionId: ext.id });
+      await invoke("uninstall_extension", { extensionId: ext.id, installPath: ext.install_path });
       showToast({ type: "success", message: `${ext.name} removed successfully.` });
       setSelectedExt(null);
       if (lastInstalled?.id === ext.id) setLastInstalled(null);
