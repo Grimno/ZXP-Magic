@@ -27,13 +27,15 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["**"]
+        "scope": [
+          "**"
+        ]
       }
     }
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgzQjg2MTJENEQxNzQ4REMKUldUY1NCZE5MV0c0ZzdGbVNUbUNieVJEcXRBNnN4NXhtdFdtZjhkK3FnVzJERHlUMzVCVDhXM3kK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM3OEQ1NkZERTYxREE0MTkKUldRWnBCM20vVmFOeDVuNUJKWlBnNXRBOUF1eEk1dk9sYWRMQWJUa3RaY0hqalBTWE80L2FQRHMK",
       "endpoints": [
         "https://github.com/Grimno/ZXP-Magic/releases/latest/download/latest.json"
       ]
