@@ -325,10 +325,10 @@ export function SettingsPanel() {
         {/* -- About section -- */}
         <Section label="About">
           {[
-            ["Version", "1.2.0"],
+            ["Version", "1.2.1"],
             ["Platform", "Windows \u00b7 macOS"],
             ["License", "MIT"],
-            ["Made by", "Grimno"],
+            ["Made by", "DragMotion"],
           ].map(([label, value], i, arr) => (
             <div
               key={label}

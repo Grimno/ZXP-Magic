@@ -144,7 +144,7 @@ export default function App() {
               ZXP Magic
             </p>
             <p className="text-[10px] mt-[3px]" style={{ color: "var(--text-3)" }}>
-              by Grimno
+              by DragMotion
             </p>
           </div>
         </div>

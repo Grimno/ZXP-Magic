@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ZXP Magic",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "identifier": "com.egehan.zxp-magic",
   "build": {
     "frontendDist": "../dist",
@@ -50,7 +50,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "publisher": "Grimno",
+    "publisher": "DragMotion",
     "windows": {
       "nsis": {
         "displayLanguageSelector": false,
