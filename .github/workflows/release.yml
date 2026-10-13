@@ -51,6 +51,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: "-"
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # the updater key is passwordless (rotated 2026-07): Tauri v2 still asks for a password
+          # when this is unset - and there is nobody to answer in CI, so the build stopped there
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           tagName: ${{ github.ref_name }}
           releaseName: ZXP Magic ${{ github.ref_name }}
@@ -65,6 +68,7 @@ jobs:
             - **macOS (Apple Silicon)**: `ZXP Magic_aarch64.dmg`
 
             > **macOS note:** If macOS says the app is damaged, right-click the .dmg → Open, then drag to Applications. If needed, run: `xattr -cr "/Applications/ZXP Magic.app"`
-          releaseDraft: false
+          # draft first: checked, then published by hand (the site serves releases/latest)
+          releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
