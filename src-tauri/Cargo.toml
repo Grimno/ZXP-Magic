@@ -1,6 +1,6 @@
 [package]
 name = "zxp-magic"
-version = "1.2.2"
+version = "1.2.3"
 description = "ZXP Magic - Adobe Extension Installer"
 authors = ["Egehan"]
 license = "MIT"
