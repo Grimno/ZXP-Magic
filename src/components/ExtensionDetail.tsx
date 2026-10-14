@@ -212,7 +212,8 @@ export function ExtensionDetail({ ext, onClose, onUninstall }: ExtensionDetailPr
                 fontSize: label === "Extension ID" ? 10 : 12,
                 color: "var(--text-2)",
                 fontFamily: label === "Extension ID" ? "monospace" : "inherit",
-                wordBreak: "break-all",
+                // whole words wrap; only long ids and paths break mid-word
+                overflowWrap: "anywhere",
                 lineHeight: 1.5,
               }}>
                 {value}
