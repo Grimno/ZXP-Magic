@@ -325,7 +325,7 @@ export function SettingsPanel() {
         {/* -- About section -- */}
         <Section label="About">
           {[
-            ["Version", "1.2.3"],
+            ["Version", "1.2.4"],
             ["Platform", "Windows \u00b7 macOS"],
             ["License", "MIT"],
             ["Made by", "DragMotion"],

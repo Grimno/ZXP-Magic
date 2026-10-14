@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "ZXP Magic",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "identifier": "com.egehan.zxp-magic",
   "build": {
     "frontendDist": "../dist",
@@ -35,7 +35,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg0N0M5NzU5ODFCNEFCRTUKUldUbHE3U0JXWmQ4aEIxUk8yQ3JpNFJyUG1iQ2Q4cG4yOXlXQlpod3dHTXdtWWVIaDhoYWUxc0QK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBM0M1NEY3RDY5MEE0NDkKUldSSnBKRFc5MVE4V2l2bWNXM3RoS0JGb1pUSi9iM3pTVzlTSlh0cGwrSzJ2YkdCREpWV2xLL2wK",
       "endpoints": [
         "https://github.com/Grimno/ZXP-Magic/releases/latest/download/latest.json"
       ]

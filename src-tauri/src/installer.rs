@@ -320,6 +320,9 @@ pub fn install_extension(path: &str) -> InstallResult {
         installed_info.icon_path = scan_for_icon(&target_dir);
     }
 
+    // Unsigned or self-signed panels only load with PlayerDebugMode on, so every install turns it on
+    let _ = set_debug_mode(true);
+
     InstallResult {
         success: true,
         message: format!("'{}' installed successfully!", installed_info.name),
@@ -382,8 +385,8 @@ pub fn uninstall_extension(extension_id: &str, install_path: Option<&str>) -> Re
     Err(format!("Extension '{}' not found", extension_id))
 }
 
-/// All known CSXS versions (newest first)
-const CSXS_VERSIONS: &[&str] = &["12", "11", "10", "9", "8", "7"];
+/// CSXS versions that get PlayerDebugMode, CEP 6 through 13 (newest first)
+const CSXS_VERSIONS: &[&str] = &["13", "12", "11", "10", "9", "8", "7", "6"];
 
 /// Read CEP PlayerDebugMode registry/plist setting
 pub fn get_debug_mode() -> bool {
@@ -405,14 +408,10 @@ pub fn get_debug_mode() -> bool {
     }
     #[cfg(target_os = "macos")]
     {
-        let home = std::env::var("HOME").unwrap_or_default();
         for version in CSXS_VERSIONS {
-            let plist = format!(
-                "{}/Library/Preferences/com.adobe.CSXS.{}.plist",
-                home, version
-            );
+            let domain = format!("com.adobe.CSXS.{}", version);
             if let Ok(output) = std::process::Command::new("defaults")
-                .args(["read", &plist, "PlayerDebugMode"])
+                .args(["read", &domain, "PlayerDebugMode"])
                 .output()
             {
                 let val = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -452,14 +451,11 @@ pub fn set_debug_mode(enabled: bool) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        let home = std::env::var("HOME").unwrap_or_default();
+        // Write through the preferences domain so cfprefsd picks the value up right away
         for version in CSXS_VERSIONS {
-            let plist = format!(
-                "{}/Library/Preferences/com.adobe.CSXS.{}.plist",
-                home, version
-            );
+            let domain = format!("com.adobe.CSXS.{}", version);
             let _ = std::process::Command::new("defaults")
-                .args(["write", &plist, "PlayerDebugMode", value])
+                .args(["write", &domain, "PlayerDebugMode", "-string", value])
                 .output();
         }
         return Ok(());

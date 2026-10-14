@@ -15,10 +15,14 @@
   --text-3:      #606880;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* in the base layer: unlayered, this reset beat every Tailwind p-* / m-* utility
+   (v4 utilities live in @layer utilities) and the app lost all its spacing */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 html, body, #root {

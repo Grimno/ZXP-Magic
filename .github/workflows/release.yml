@@ -51,9 +51,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: "-"
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          # the updater key is passwordless (rotated 2026-07): Tauri v2 still asks for a password
-          # when this is unset - and there is nobody to answer in CI, so the build stopped there
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          # empty-password keys fail to decode ("Wrong password for that key"), so the key has a real password
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: ZXP Magic ${{ github.ref_name }}
